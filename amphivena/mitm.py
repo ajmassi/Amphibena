@@ -4,9 +4,9 @@ import sys
 
 
 class MitM:
-    def __init__(self, interface1=None, interface2=None):
+    def __init__(self, interface1, interface2=None):
         """
-        Initialize MitM, verifies supplied interfaces exist
+        Initialize MitM, verifies supplied interfaces exist.
 
         :param interface1: Primary network interface for MitM. Typically faces a network or server.
         :param interface2: Secondary network interface for network bridge/tap. Typically faces target client.
@@ -15,6 +15,12 @@ class MitM:
         self.interface1 = interface1
         self.interface2 = interface2
         self.bridge_name = "ampbr"
+        self.kernbr_enabled = None
+        self.kernbr_ipv4 = None
+        self.kernbr_ipv6 = None
+        self.kernbr_arp = None
+
+        self.kern_br_module_up()
 
         # Interface input validation
         if subprocess.run(['ip', 'address', 'show', 'dev', self.interface1],
@@ -40,26 +46,83 @@ class MitM:
                                capture_output=True, check=True)
                 subprocess.run(['ip', 'link', 'delete', self.bridge_name, 'type', 'bridge'],
                                capture_output=True, check=True)
+                subprocess.run(['iptables', '-D', 'FORWARD', '-i', self.bridge_name, '-j', 'NFQUEUE', '--queue-num', '1'],
+                               capture_output=True, check=True)
             except subprocess.CalledProcessError as e:
                 print(f"Error tearing down old network bridge: {e}")
 
-    def network_tap(self):
+        self.kern_br_module_down()
+
+    def kern_br_module_up(self):
         """
-        Establishes network tap over MitM interface1 and interface2
+        Configures kernel network bridge module to the correct state for packet capture.
+        If module is currently in use, values are saved to be restored on program exit.
 
         :return: None
         """
-        # Make sure bridge is clean
+        try:
+            if subprocess.run(['test', '-d', '/proc/sys/net/bridge'], capture_output=True).returncode:
+                self.kernbr_enabled = False
+                subprocess.run(['modprobe', 'br_netfilter'], capture_output=True, check=True)
+            else:
+                self.kernbr_enabled = True
+                self.kernbr_ipv4 = int(subprocess.run(['cat', '/proc/sys/net/bridge/bridge-nf-call-iptables'],
+                                                      capture_output=True).stdout)
+                self.kernbr_ipv6 = int(subprocess.run(['cat', '/proc/sys/net/bridge/bridge-nf-call-ip6tables'],
+                                                      capture_output=True).stdout)
+                self.kernbr_arp = int(subprocess.run(['cat', '/proc/sys/net/bridge/bridge-nf-call-arptables'],
+                                                     capture_output=True).stdout)
+
+            subprocess.run(['echo', '1', '>', '/proc/sys/net/bridge/bridge-nf-call-iptables'],
+                           capture_output=True, check=True)
+            subprocess.run(['echo', '1', '>', '/proc/sys/net/bridge/bridge-nf-call-ip6tables'],
+                           capture_output=True, check=True)
+            subprocess.run(['echo', '1', '>', '/proc/sys/net/bridge/bridge-nf-call-arptables'],
+                           capture_output=True, check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"Error configuring kernel network bridge module: {e}")
+
+    def kern_br_module_down(self):
+        """
+        Restore system's kernel network bridge module to initial state.
+        Resets original configuration or disables module as appropriate.
+
+        :return: None
+        """
+        try:
+            if self.kernbr_enabled:
+                subprocess.run(['echo', self.kernbr_ipv4, '>', '/proc/sys/net/bridge/bridge-nf-call-iptables'],
+                               capture_output=True, check=True)
+                subprocess.run(['echo', self.kernbr_ipv6, '>', '/proc/sys/net/bridge/bridge-nf-call-ip6tables'],
+                               capture_output=True, check=True)
+                subprocess.run(['echo', self.kernbr_arp, '>', '/proc/sys/net/bridge/bridge-nf-call-arptables'],
+                               capture_output=True, check=True)
+            else:
+                subprocess.run(['modprobe', '-r', 'br_netfilter'], capture_output=True, check=True)
+
+        except subprocess.CalledProcessError as e:
+            print(f"Error configuring kernel network bridge module: {e}")
+
+    def network_tap(self):
+        """
+        Establishes network tap over MitM interface1 and interface2.
+
+        :return: None
+        """
+        # Clean existing bridge from system (could occur on previous shutdown error)
         if subprocess.run(['ip', 'address', 'show', self.bridge_name], capture_output=True).returncode == 0:
             try:
                 subprocess.run(['ip', 'link', 'set', self.bridge_name, 'down'],
                                capture_output=True, check=True)
                 subprocess.run(['ip', 'link', 'delete', self.bridge_name, 'type', 'bridge'],
                                capture_output=True, check=True)
+                subprocess.run(['iptables', '-D', 'FORWARD', '-i', self.bridge_name, '-j', 'NFQUEUE', '--queue-num', '1'],
+                               capture_output=True, check=True)
             except subprocess.CalledProcessError as e:
                 print(f"Error tearing down old network bridge: {e}")
 
-        # Create bridge
+        # Create bridge on system
+        print(f"Constructing network tap between {self.interface1} and {self.interface2}")
         try:
             subprocess.run(['ip', 'link', 'add', self.bridge_name, 'type', 'bridge'],
                            capture_output=True, check=True)
@@ -69,6 +132,9 @@ class MitM:
                            capture_output=True, check=True)
             subprocess.run(['ip', 'link', 'set', self.bridge_name, 'up'],
                            capture_output=True, check=True)
+            subprocess.run(['iptables', '-A', 'FORWARD', '-i', self.bridge_name, '-j', 'NFQUEUE', '--queue-num', '1'],
+                           capture_output=True, check=True)
+            print(f"Network tap successfully constructed")
         except subprocess.CalledProcessError as e:
             print(f"Error constructing network bridge: {e}")
 
@@ -105,6 +171,12 @@ def get_args():
 
 
 def command_line_infect():
+    """
+    For the uncommon command-line use case.
+    Parses command line arguments to generate and start a MitM.
+
+    :return: None
+    """
     args = get_args()
 
     interface1 = args['i']
