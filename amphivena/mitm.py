@@ -61,18 +61,20 @@ class MitM:
         :return: None
         """
         try:
+            # TODO add logging for kernel module state changes
             if subprocess.run(['test', '-d', '/proc/sys/net/bridge'], capture_output=True).returncode:
                 self.kernbr_enabled = False
                 subprocess.run(['modprobe', 'br_netfilter'], capture_output=True, check=True)
             else:
                 self.kernbr_enabled = True
-                self.kernbr_ipv4 = int(subprocess.run(['cat', '/proc/sys/net/bridge/bridge-nf-call-iptables'],
-                                                      capture_output=True).stdout)
-                self.kernbr_ipv6 = int(subprocess.run(['cat', '/proc/sys/net/bridge/bridge-nf-call-ip6tables'],
-                                                      capture_output=True).stdout)
-                self.kernbr_arp = int(subprocess.run(['cat', '/proc/sys/net/bridge/bridge-nf-call-arptables'],
-                                                     capture_output=True).stdout)
+                self.kernbr_ipv4 = subprocess.run(['cat', '/proc/sys/net/bridge/bridge-nf-call-iptables'],
+                                                      capture_output=True).stdout
+                self.kernbr_ipv6 = subprocess.run(['cat', '/proc/sys/net/bridge/bridge-nf-call-ip6tables'],
+                                                      capture_output=True).stdout
+                self.kernbr_arp = subprocess.run(['cat', '/proc/sys/net/bridge/bridge-nf-call-arptables'],
+                                                     capture_output=True).stdout
 
+            # TODO 6/14 - subprocess does not like piping in this fashion, requires fix
             subprocess.run(['echo', '1', '>', '/proc/sys/net/bridge/bridge-nf-call-iptables'],
                            capture_output=True, check=True)
             subprocess.run(['echo', '1', '>', '/proc/sys/net/bridge/bridge-nf-call-ip6tables'],
@@ -91,6 +93,7 @@ class MitM:
         """
         try:
             if self.kernbr_enabled:
+                # TODO 6/14 - subprocess does not like piping in this fashion, requires fix
                 subprocess.run(['echo', self.kernbr_ipv4, '>', '/proc/sys/net/bridge/bridge-nf-call-iptables'],
                                capture_output=True, check=True)
                 subprocess.run(['echo', self.kernbr_ipv6, '>', '/proc/sys/net/bridge/bridge-nf-call-ip6tables'],
