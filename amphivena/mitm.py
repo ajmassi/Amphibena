@@ -3,6 +3,9 @@ import subprocess
 import sys
 import atexit
 import shlex
+import json
+import logging
+import logging.config
 
 
 class MitM:
@@ -17,6 +20,10 @@ class MitM:
         self._interface1 = interface1
         self._interface2 = interface2
         self.bridge_name = "ampbr"
+
+        with open('logger.conf') as logger_conf:
+            logging.config.dictConfig(json.load(logger_conf))
+        self.log = logging.getLogger(__name__)
 
         # Track if machine had br_netfilter enabled before mitm execution
         self.__kernel_bridge_previously_enabled = True
@@ -33,15 +40,18 @@ class MitM:
                 subprocess.run('ip address show dev ' + shlex.quote(self._interface2),
                                capture_output=True, shell=True, check=True)
         except subprocess.CalledProcessError as e:
-            print(f"ArgumentError: could not find interface {e}")
-            sys.exit(1)
+            self.log.exception(f"provided interface not found on local machine")
+            sys.exit(e)
 
         if self._interface1 and self._interface2 and self._interface1 == self._interface2:
-            print(f"ArgumentError: network bridge interfaces cannot be the same")
+            self.log.error(f"provided network bridge interfaces cannot be the same")
             sys.exit(1)
 
         atexit.register(self.teardown)
         self.kernel_br_module_up()
+
+        self.log.info(f"MitM created {self}")
+        self.log.debug(f"{self} params {{{vars(self)}}}")
 
     def teardown(self):
         # TODO refactor when arp poisoning integrated
@@ -56,10 +66,13 @@ class MitM:
                 subprocess.run('iptables -D FORWARD -i ' + shlex.quote(self.bridge_name) + ' -j NFQUEUE --queue-num 1',
                                capture_output=True, shell=True, check=True)
 
+                self.log.info(f"network bridge '{self.bridge_name}' successfully removed")
+
             except subprocess.CalledProcessError as e:
-                print(f"Error tearing down network bridge: {e}")
+                self.log.warning(f"network bridge '{self.bridge_name}' teardown encountered error: \n{e}")
 
         self.kernel_br_module_down()
+        self.log.info(f"MitM {self} teardown complete")
 
     def kernel_br_module_up(self):
         """
@@ -88,8 +101,11 @@ class MitM:
                            capture_output=True, shell=True, check=True)
             subprocess.run('echo 1 > /proc/sys/net/bridge/bridge-nf-call-arptables',
                            capture_output=True, shell=True, check=True)
+
+            self.log.info("kernel module 'br_netfilter' successfully initialized")
+
         except subprocess.CalledProcessError as e:
-            print(f"Error configuring kernel network bridge module: {e}")
+            self.log.warning(f"Error configuring kernel network bridge module: \n{e}")
 
     def kernel_br_module_down(self):
         """
@@ -109,8 +125,10 @@ class MitM:
             else:
                 subprocess.run('modprobe -r br_netfilter', capture_output=True, shell=True, check=True)
 
+            self.log.info("kernel module 'br_netfilter' successfully reset to initial state")
+
         except subprocess.CalledProcessError as e:
-            print(f"Error resetting kernel network bridge module: {e}")
+            self.log.warning(f"kernel network bridge module failed to reset to initial state: \n{e}")
 
     def network_tap(self):
         """
@@ -130,10 +148,10 @@ class MitM:
                                capture_output=True, shell=True, check=True)
 
             except subprocess.CalledProcessError as e:
-                print(f"Error tearing down old network bridge: {e}")
+                self.log.warning(f"failure tearing down old network bridge: \n{e}")
 
         # Create bridge on system
-        print(f"Constructing network tap between {self._interface1} and {self._interface2}")
+        self.log.info(f"constructing network tap between {self._interface1} and {self._interface2}")
         try:
             subprocess.run('ip link add ' + shlex.quote(self.bridge_name) + ' type bridge',
                            capture_output=True, shell=True, check=True)
@@ -145,16 +163,16 @@ class MitM:
                            capture_output=True, shell=True, check=True)
             subprocess.run('iptables -A FORWARD -i ' + shlex.quote(self.bridge_name) + ' -j NFQUEUE --queue-num 1',
                            capture_output=True, shell=True, check=True)
-            print(f"Network tap successfully constructed")
+            self.log.info(f"network tap successfully constructed")
         except subprocess.CalledProcessError as e:
-            print(f"Error constructing network bridge: {e}")
+            self.log.exception(f"failure constructing network bridge: {e}")
 
     def arp_poison(self):
         """
         TODO support network arp poisoning + update teardown()
         :return: None
         """
-        print("Error: Unimplemented function 'arp_poison()'")
+        self.log.exception("unimplemented function 'arp_poison()'")
         sys.exit(1)
 
 
