@@ -6,6 +6,7 @@ import shlex
 import json
 import logging
 import logging.config
+import pathlib
 
 
 class MitM:
@@ -21,7 +22,9 @@ class MitM:
         self._interface2 = interface2
         self.bridge_name = "ampbr"
 
-        with open('logger.conf') as logger_conf:
+        # Configure logger
+        config_directory = pathlib.Path(__file__).parent.absolute()
+        with open(config_directory.joinpath('logger.conf')) as logger_conf:
             logging.config.dictConfig(json.load(logger_conf))
         self.log = logging.getLogger(__name__)
 
@@ -54,7 +57,6 @@ class MitM:
         self.log.debug(f"{self} params {{{vars(self)}}}")
 
     def teardown(self):
-        # TODO refactor when arp poisoning integrated
         # Make sure bridge is clean on exit
         if subprocess.run('ip address show ' + shlex.quote(self.bridge_name),
                           capture_output=True, shell=True).returncode == 0:
@@ -82,8 +84,8 @@ class MitM:
         :return: None
         """
         try:
-            # TODO add logging for kernel module state changes
             if subprocess.run('test -d /proc/sys/net/bridge', capture_output=True, shell=True).returncode == 0:
+                self.log.debug("kernel module 'br_netfilter' already up, saving current settings")
                 self.__kernel_bridge_previously_enabled = True
                 self.__kernel_br_ipv4 = subprocess.run('cat /proc/sys/net/bridge/bridge-nf-call-iptables',
                                                        capture_output=True, shell=True, check=True).stdout
@@ -92,6 +94,7 @@ class MitM:
                 self.__kernel_br_arp = subprocess.run('cat /proc/sys/net/bridge/bridge-nf-call-arptables',
                                                       capture_output=True, shell=True, check=True).stdout
             else:
+                self.log.debug("activating kernel module 'br_netfilter'")
                 self.__kernel_bridge_previously_enabled = False
                 subprocess.run('modprobe br_netfilter', capture_output=True, shell=True, check=True)
 
