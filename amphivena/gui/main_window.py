@@ -88,29 +88,9 @@ class MainApplication(tk.Frame):
             self.horizontal_scroll_bar.grid(row=1, column=0, sticky=tk.EW)
             self.canvas.configure(xscrollcommand=self.horizontal_scroll_bar.set)
 
-            # Below based on:
-            # https://stackoverflow.com/questions/43731784/tkinter-canvas-scrollbar-with-grid
             # Canvas Inner-Frame to store actual playbook data
             self.playbook_inner_frame = tk.Frame(self.canvas, bg="cyan")
             self.canvas.create_window((0, 0), window=self.playbook_inner_frame, anchor='nw')
-
-            rows = 100
-            columns = 5
-            buttons = [[tk.Button() for j in range(columns)] for i in range(rows)]
-            for i in range(0, rows):
-                for j in range(0, columns):
-                    buttons[i][j] = tk.Button(self.playbook_inner_frame, text=("%d,%d" % (i + 1, j + 1)))
-                    buttons[i][j].grid(row=i, column=j, sticky='news')
-
-            # Update buttons frames idle tasks to let tkinter calculate buttons sizes
-            self.playbook_inner_frame.update_idletasks()
-
-            # Resize the canvas frame to show exactly 5-by-5 buttons and the scrollbar
-            first5columns_width = sum([buttons[0][j].winfo_width() for j in range(0, 5)])
-            first5rows_height = sum([buttons[i][0].winfo_height() for i in range(0, 5)])
-            self.config(width=first5columns_width + self.vertical_scroll_bar.winfo_width(), height=first5rows_height)
-
-            # Set the canvas scrolling region
             self.canvas.config(scrollregion=self.canvas.bbox("all"))
 
         def scroll(self, direction):
