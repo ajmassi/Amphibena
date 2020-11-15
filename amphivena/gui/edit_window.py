@@ -19,7 +19,7 @@ class EditWindow(tk.Toplevel):
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
-        self.mainApplication = MainApplication(self)
+        self.main_application = MainApplication(self)
 
 
 class MainApplication(tk.Frame):
@@ -61,6 +61,7 @@ class MainApplication(tk.Frame):
             tk.OptionMenu.__init__(self, parent, self._selection, *self._group_names)
 
         def _selection_change(self, *args):
+            print(self._selection.get())
             self.master.update_layermenu(self._group_detail_lookup.get(self._selection.get()))
 
     class LayerMenu(tk.OptionMenu):
@@ -78,6 +79,7 @@ class MainApplication(tk.Frame):
 
         def _selection_change(self, *args):
             if self['state'] == "normal":
+                print(self._selection.get())
                 self.master.update_fieldmenu(self._layer_detail_lookup.get(self._selection.get()))
 
         def update_contents(self, selected_layer_group):
