@@ -1,4 +1,7 @@
+import json
 import tkinter as tk
+from tkinter import filedialog
+
 import amphivena.gui.edit_window as edit_window
 
 
@@ -41,11 +44,23 @@ class RootWindow(tk.Tk):
         def file_menu(self):
             filemenu = tk.Menu(self, tearoff=0)
             filemenu.add_command(label="New")
-            filemenu.add_command(label="Load")
+            filemenu.add_command(label="Load", command=self.load_file)
             filemenu.add_command(label="Save")
             filemenu.add_separator()
             filemenu.add_command(label="Exit", command=self.close_root)
             return filemenu
+
+        def load_file(self):
+            filename = filedialog.askopenfilename(
+                title='Open a Amp config file',
+                initialdir='./',
+                filetypes=[('Json', '*.json')]
+            )
+
+            with open(filename, 'r+') as op_conf:
+                data=op_conf.read()
+
+            print(json.loads(data))
 
         def close_root(self):
             self.master.destroy()
