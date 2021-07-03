@@ -1,0 +1,24 @@
+{
+  "1": {
+    "Packet": "Drop",
+    "Layer Group": "IPv4 (Internet Protocol v4).",
+    "Layer": "TCP",
+    "Field": "<Field (TCP,TCPerror).sport>"
+  },
+  "2": {
+    "Packet": "Edit",
+    "Layer Group": "IPv4 (Internet Protocol v4).",
+    "Layer": "TCP",
+    "Field": "<Field (TCP,TCPerror).sport>",
+    "Actions": {
+      "Modify": {
+        "Field": "<Field (TCP,TCPerror).sport>",
+        "val": "10.10.10.10"
+      },
+      "Insert":{
+        "Field": "32",
+        "val": "\\x41"
+      }
+    }
+  }
+}
