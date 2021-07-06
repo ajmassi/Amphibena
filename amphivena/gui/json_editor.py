@@ -23,13 +23,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-import tkinter as tk
-from tkinter import ttk
 import collections
 import json
-from tkinter import simpledialog as sd
-from tkinter import filedialog as fd
-from tkinter import messagebox as mb
+import tkinter as tk
+from tkinter import filedialog as fd, messagebox as mb, simpledialog as sd, ttk
 
 """
 Layout:
@@ -55,38 +52,53 @@ class ValueTypes:
 
 
 class Tags:
-    DICT = 'dict'
-    LIST = 'list'
-    ROOT = 'root'
-    LEAF = 'leaf'
-    FILE = 'file'
+    DICT = "dict"
+    LIST = "list"
+    ROOT = "root"
+    LEAF = "leaf"
+    FILE = "file"
 
 
 class JsonEditor:
-
     def __init__(self, master, **options):
 
-        self.popup_menu_actions = collections.OrderedDict()  # Format: {'id':{'text':'','action':function}, ...}
+        self.popup_menu_actions = (
+            collections.OrderedDict()
+        )  # Format: {'id':{'text':'','action':function}, ...}
 
         if not options.get("readonly"):
 
-            self.popup_menu_actions['add_child_dict'] = {'text': 'Add Dict',
-                                                         'action': lambda: self.add_item_from_input(ValueTypes.DICT)}
+            self.popup_menu_actions["add_child_dict"] = {
+                "text": "Add Dict",
+                "action": lambda: self.add_item_from_input(ValueTypes.DICT),
+            }
 
-            self.popup_menu_actions['add_child_list'] = {'text': 'Add List',
-                                                         'action': lambda: self.add_item_from_input(ValueTypes.LIST)}
+            self.popup_menu_actions["add_child_list"] = {
+                "text": "Add List",
+                "action": lambda: self.add_item_from_input(ValueTypes.LIST),
+            }
 
-            self.popup_menu_actions['add_child_value'] = {'text': 'Add Value',
-                                                          'action': lambda: self.add_item_from_input(ValueTypes.STR)}
+            self.popup_menu_actions["add_child_value"] = {
+                "text": "Add Value",
+                "action": lambda: self.add_item_from_input(ValueTypes.STR),
+            }
 
-            self.popup_menu_actions['add_child_filepath'] = {'text': 'Add Filepath',
-                                                             'action': lambda: self.add_item_from_input(ValueTypes.FILEPATH)}
+            self.popup_menu_actions["add_child_filepath"] = {
+                "text": "Add Filepath",
+                "action": lambda: self.add_item_from_input(ValueTypes.FILEPATH),
+            }
 
-            self.popup_menu_actions['edit_child'] = {'text': 'Edit',
-                                                     'action': lambda: self.edit_item_from_input()}
+            self.popup_menu_actions["edit_child"] = {
+                "text": "Edit",
+                "action": lambda: self.edit_item_from_input(),
+            }
 
-            self.popup_menu_actions['remove_child'] = {'text': 'Remove',
-                                                       'action': lambda: self.remove_item_from_input(self.get_selected_index())}
+            self.popup_menu_actions["remove_child"] = {
+                "text": "Remove",
+                "action": lambda: self.remove_item_from_input(
+                    self.get_selected_index()
+                ),
+            }
 
         wrapper = ttk.Frame(master)
         wrapper.pack(fill=tk.BOTH, expand=True)
@@ -95,38 +107,54 @@ class JsonEditor:
         header_wrapper.pack(fill=tk.X)
 
         self.title = tk.StringVar()
-        ttk.Label(header_wrapper, textvariable=self.title).pack(side=tk.LEFT, anchor=tk.N)
+        ttk.Label(header_wrapper, textvariable=self.title).pack(
+            side=tk.LEFT, anchor=tk.N
+        )
 
-        ttk.Button(header_wrapper,
-                   text="Load JSON File",
-                   command=lambda: self.load_json_from_file(fd.askopenfilename())).pack(side=tk.RIGHT)
+        ttk.Button(
+            header_wrapper,
+            text="Load JSON File",
+            command=lambda: self.load_json_from_file(fd.askopenfilename()),
+        ).pack(side=tk.RIGHT)
 
         if not options.get("readonly"):
-            ttk.Button(header_wrapper,
-                       text="New JSON File",
-                       command=lambda: self.create_empty_json_file(fd.asksaveasfilename())).pack(side=tk.RIGHT)
+            ttk.Button(
+                header_wrapper,
+                text="New JSON File",
+                command=lambda: self.create_empty_json_file(fd.asksaveasfilename()),
+            ).pack(side=tk.RIGHT)
 
-            ttk.Button(header_wrapper,
-                       text="New JSON",
-                       command=lambda: self.create_json_from_data(sd.askstring("JSON name?", "name = "), {})).pack(side=tk.RIGHT)
+            ttk.Button(
+                header_wrapper,
+                text="New JSON",
+                command=lambda: self.create_json_from_data(
+                    sd.askstring("JSON name?", "name = "), {}
+                ),
+            ).pack(side=tk.RIGHT)
 
         self.show_detail = tk.IntVar()
         self.show_detail.set(0)
-        ttk.Checkbutton(header_wrapper, text="Expand All", variable=self.show_detail, onvalue=1, offvalue=0,
-                        command=self.toggle_detail_view).pack(side=tk.RIGHT)
+        ttk.Checkbutton(
+            header_wrapper,
+            text="Expand All",
+            variable=self.show_detail,
+            onvalue=1,
+            offvalue=0,
+            command=self.toggle_detail_view,
+        ).pack(side=tk.RIGHT)
 
         body_wrapper = ttk.Frame(wrapper)
         body_wrapper.pack(fill=tk.BOTH, expand=True)
         body_wrapper.columnconfigure(0, weight=1)
         body_wrapper.rowconfigure(0, weight=1)
 
-        self.tree = ttk.Treeview(body_wrapper, selectmode='browse')
+        self.tree = ttk.Treeview(body_wrapper, selectmode="browse")
         self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        self.tree.bind('<Button-3>', lambda event: self.show_popup_menu(event))
+        self.tree.bind("<Button-3>", lambda event: self.show_popup_menu(event))
 
-        self.tree.item('', tags=[Tags.DICT])
-        self.tree.tag_configure(Tags.ROOT, background='yellow')
+        self.tree.item("", tags=[Tags.DICT])
+        self.tree.tag_configure(Tags.ROOT, background="yellow")
 
         yscroll = ttk.Scrollbar(self.tree, orient=tk.VERTICAL, command=self.tree.yview)
         yscroll.pack(side=tk.RIGHT, fill=tk.Y)
@@ -157,33 +185,39 @@ class JsonEditor:
         """
         self.title.set(title)
 
-    def set_columns(self, columns=('Key', 'Value')):
+    def set_columns(self, columns=("Key", "Value")):
         """
         Sets the column headings with the given column tuple.
         :param columns: A <tuple> containing <str> objects.
         """
-        col_ids = ['#'+str(i) for i in range(len(columns)-1)]
+        col_ids = ["#" + str(i) for i in range(len(columns) - 1)]
         self.tree.configure(column=col_ids)
         for i in range(len(columns)):
-            self.tree.heading('#'+str(i), text=columns[i])
+            self.tree.heading("#" + str(i), text=columns[i])
 
     def set_action_item_selected(self, action):
         """
         :param action: Its a function, the format must be action(selected_item).
         """
-        self.tree.bind("<<TreeviewSelect>>", lambda event: action(self.get_selected_index()))
+        self.tree.bind(
+            "<<TreeviewSelect>>", lambda event: action(self.get_selected_index())
+        )
 
     def set_action_item_opened(self, action):
         """
         :param action: Its a function, the format must be action(selected_item).
         """
-        self.tree.bind("<<TreeviewOpen>>", lambda event: action(self.get_selected_index()))
+        self.tree.bind(
+            "<<TreeviewOpen>>", lambda event: action(self.get_selected_index())
+        )
 
     def set_action_item_closed(self, action):
         """
         :param action: Its a function, the format must be action(selected_item).
         """
-        self.tree.bind("<<TreeviewClose>>", lambda event: action(self.get_selected_index()))
+        self.tree.bind(
+            "<<TreeviewClose>>", lambda event: action(self.get_selected_index())
+        )
 
     def add_popup_menu_action(self, menu_id, action, text=None):
         """
@@ -192,7 +226,7 @@ class JsonEditor:
         :param action: The function execute for this menu event.
         :param text: Display text for menu, default is menu_id.
         """
-        self.popup_menu_actions[menu_id] = {'text': text or menu_id, 'action': action}
+        self.popup_menu_actions[menu_id] = {"text": text or menu_id, "action": action}
         self.update_popup_menu()
 
     def expand_item(self, index):
@@ -220,7 +254,7 @@ class JsonEditor:
 
         self.tree.item(index, open=False)
 
-    def populate_item(self, key, value, node='', tags=[]):
+    def populate_item(self, key, value, node="", tags=[]):
         """
         Performs a recursive traversal to populate the item tree starting from given node.
         Each item is a key-value pair. Root node is defined by node=''.
@@ -228,21 +262,27 @@ class JsonEditor:
         :param value: It can be any of the primitive data type.
         :param node: Initially '', otherwise a <tk.Treeview> node object.
         """
-        if node == '':
-            tags = tags+[Tags.ROOT]
+        if node == "":
+            tags = tags + [Tags.ROOT]
 
         if type(value) is dict:
-            node = self.tree.insert(node, tk.END, text=str(key)+'={}', tags=tags+[Tags.DICT])
+            node = self.tree.insert(
+                node, tk.END, text=str(key) + "={}", tags=tags + [Tags.DICT]
+            )
             for k in value:
                 self.populate_item(k, value[k], node)
         elif type(value) is list:
-            node = self.tree.insert(node, tk.END, text=str(key)+'=[]', tags=tags+[Tags.LIST])
+            node = self.tree.insert(
+                node, tk.END, text=str(key) + "=[]", tags=tags + [Tags.LIST]
+            )
             for k in range(len(value)):
                 self.populate_item(k, value[k], node)
         else:
-            self.tree.insert(node, tk.END, text=str(key), tags=tags+[Tags.LEAF], values=[value])
+            self.tree.insert(
+                node, tk.END, text=str(key), tags=tags + [Tags.LEAF], values=[value]
+            )
 
-    def add_item(self, key, value, parent='', tags=[]):
+    def add_item(self, key, value, parent="", tags=[]):
         """
         Adds a new item at the selected parent item.
         :param key: A <str> key for the new item.
@@ -251,11 +291,13 @@ class JsonEditor:
         '' means absolute root, json roots are direct children of it.
         """
         self.populate_item(key, value, parent, tags)
-        if parent == '':
+        if parent == "":
             return
         json_root = self.get_json_root(parent)
         if self.tree.tag_has(Tags.FILE, json_root):
-            self.save_json_file(self.get_json_filepath(json_root), self.get_value(json_root))
+            self.save_json_file(
+                self.get_json_filepath(json_root), self.get_value(json_root)
+            )
 
     def add_item_from_input(self, vtype=ValueTypes.STR):
         """
@@ -267,7 +309,8 @@ class JsonEditor:
 
             key = sd.askstring("Input", "key = ").strip()
 
-            if not key: return
+            if not key:
+                return
 
             value = None
 
@@ -301,7 +344,9 @@ class JsonEditor:
 
         else:
             # Leaf node in selection, change selection and call method again
-            self.tree.selection_set(self.tree.parent(parent))  # Changing selection to parent
+            self.tree.selection_set(
+                self.tree.parent(parent)
+            )  # Changing selection to parent
             self.add_item_from_input(type)
 
     def edit_item(self, index, key=None, value=None):
@@ -318,11 +363,13 @@ class JsonEditor:
         if value:
             self.tree.item(index, values=[value])
 
-        if index == '':
+        if index == "":
             return
         json_root = self.get_json_root(index)
         if self.tree.tag_has(Tags.FILE, json_root):
-            self.save_json_file(self.get_json_filepath(json_root), self.get_value(json_root))
+            self.save_json_file(
+                self.get_json_filepath(json_root), self.get_value(json_root)
+            )
 
     def edit_item_from_input(self):
         """
@@ -338,9 +385,9 @@ class JsonEditor:
 
             if self.verify_key(key):
                 if self.tree.tag_has(Tags.DICT, selection):
-                    key += '={}'
+                    key += "={}"
                 elif self.tree.tag_has(Tags.LIST, selection):
-                    key += '=[]'
+                    key += "=[]"
 
             self.edit_item(selection, key=key)
 
@@ -370,7 +417,9 @@ class JsonEditor:
             self.remove_item(index)
 
         if self.tree.tag_has(Tags.FILE, json_root):
-            self.save_json_file(self.get_json_filepath(json_root), self.get_value(json_root))
+            self.save_json_file(
+                self.get_json_filepath(json_root), self.get_value(json_root)
+            )
 
     def remove_all_item(self):
         """
@@ -387,11 +436,11 @@ class JsonEditor:
         """
         data = {}
         try:
-            with open(filepath, 'r') as f:
+            with open(filepath, "r") as f:
                 data = json.load(f)
                 self.add_item(f.name, data, tags=[Tags.FILE])
         except FileNotFoundError():
-            print(e)
+            print("File not found")
         return data
 
     def create_empty_json_file(self, filepath):
@@ -416,7 +465,7 @@ class JsonEditor:
         :param filepath: An absolute filepath to save the json file.
         :param data: A <dict> object.
         """
-        with open(filepath, 'w') as f:
+        with open(filepath, "w") as f:
             json.dump(data, f)
 
     def get_selected_index(self):
@@ -431,7 +480,8 @@ class JsonEditor:
         :param index: An item index in the tree.
         :return: The corresponding json root index.
         """
-        if index == '': return None
+        if index == "":
+            return None
         if self.tree.tag_has(Tags.ROOT, index):
             return index
         return self.get_json_root(self.tree.parent(index))
@@ -452,9 +502,9 @@ class JsonEditor:
         :return: The key <str> object.
         """
         item = self.tree.item(index)
-        key = item['text']
+        key = item["text"]
         if self.tree.tag_has(Tags.DICT, index) or self.tree.tag_has(Tags.LIST, index):
-            key = item['text'].split('=')[0].strip()
+            key = item["text"].split("=")[0].strip()
         return key
 
     def get_value(self, index):
@@ -476,7 +526,7 @@ class JsonEditor:
             for child in child_nodes:
                 value.append(self.get_value(child))
         else:
-            value = item['values'][0]
+            value = item["values"][0]
         return value
 
     def get_key_value_pair(self, index):
@@ -491,7 +541,9 @@ class JsonEditor:
         Pops up menu for controller defined actions.
         :param event: The event where <Button-3> was clicked.
         """
-        self.tree.selection_set(self.tree.identify_row(event.y))  # Before popping up selecting the clicked item
+        self.tree.selection_set(
+            self.tree.identify_row(event.y)
+        )  # Before popping up selecting the clicked item
         if self.get_selected_index():
             self.popup_menu.post(event.x_root, event.y_root)
 
@@ -501,8 +553,10 @@ class JsonEditor:
         """
         self.popup_menu.delete(0, tk.END)  # Delete old entries
         for key in self.popup_menu_actions:
-            self.popup_menu.add_command(label=self.popup_menu_actions[key]['text'],
-                                        command=self.popup_menu_actions[key]['action'])
+            self.popup_menu.add_command(
+                label=self.popup_menu_actions[key]["text"],
+                command=self.popup_menu_actions[key]["action"],
+            )
 
     def verify_selection(self, expected=Tags.LEAF):
         """
@@ -516,11 +570,11 @@ class JsonEditor:
         return False
 
     def verify_key(self, key):
-        if len(key.encode('utf-8')):
+        if len(key.encode("utf-8")):
             return True
         return False
 
     def verify_value(self, value):
-        if len(value.encode('utf-8')):
+        if len(value.encode("utf-8")):
             return True
         return False

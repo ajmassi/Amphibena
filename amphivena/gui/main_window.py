@@ -2,7 +2,7 @@ import json
 import tkinter as tk
 from tkinter import filedialog
 
-import amphivena.gui.edit_window as edit_window
+from amphivena.gui import edit_window, json_editor
 
 
 def initialize():
@@ -17,7 +17,7 @@ class RootWindow(tk.Tk):
         self.title("Amphivena")
         self.geometry("600x400")
         self.resizable(True, True)
-        self.option_add('*tearOff', False)
+        self.option_add("*tearOff", False)
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
@@ -25,7 +25,7 @@ class RootWindow(tk.Tk):
         self.bind_all("<Button-4>", self.mouse_wheel_handler)
         self.bind_all("<Button-5>", self.mouse_wheel_handler)
 
-        self.main_application = MainApplication(self)
+        self.main_application = json_editor.JsonEditor(self)
 
     def mouse_wheel_handler(self, event):
         def scroll_direction():
@@ -52,13 +52,13 @@ class RootWindow(tk.Tk):
 
         def load_file(self):
             filename = filedialog.askopenfilename(
-                title='Open a Amp config file',
-                initialdir='./',
-                filetypes=[('Json', '*.json')]
+                title="Open a Amp config file",
+                initialdir="./",
+                filetypes=[("Json", "*.json")],
             )
 
-            with open(filename, 'r+') as op_conf:
-                data=op_conf.read()
+            with open(filename, "r+") as op_conf:
+                data = op_conf.read()
 
             print(json.loads(data))
 
@@ -67,7 +67,7 @@ class RootWindow(tk.Tk):
 
 
 class MainApplication(tk.Frame):
-    """ Main Container """
+    """Main Container"""
 
     def __init__(self, parent):
         tk.Frame.__init__(self, parent, bg="gray2")
@@ -90,22 +90,30 @@ class MainApplication(tk.Frame):
             self.grid_columnconfigure(0, weight=1)
 
             # Canvas used to manage scrollable region
-            self.canvas = tk.Canvas(self, width=parent.winfo_vrootwidth(), height=parent.winfo_vrootheight())
+            self.canvas = tk.Canvas(
+                self, width=parent.winfo_vrootwidth(), height=parent.winfo_vrootheight()
+            )
             self.canvas.grid(row=0, column=0, sticky=tk.NSEW)
 
             # Create a vertical scrollbar linked to the canvas.
-            self.vertical_scroll_bar = tk.Scrollbar(self, orient=tk.VERTICAL, command=self.canvas.yview)
+            self.vertical_scroll_bar = tk.Scrollbar(
+                self, orient=tk.VERTICAL, command=self.canvas.yview
+            )
             self.vertical_scroll_bar.grid(row=0, column=1, sticky=tk.NS)
             self.canvas.configure(yscrollcommand=self.vertical_scroll_bar.set)
 
             # Create a horizontal scrollbar linked to the canvas.
-            self.horizontal_scroll_bar = tk.Scrollbar(self, orient=tk.HORIZONTAL, command=self.canvas.xview)
+            self.horizontal_scroll_bar = tk.Scrollbar(
+                self, orient=tk.HORIZONTAL, command=self.canvas.xview
+            )
             self.horizontal_scroll_bar.grid(row=1, column=0, sticky=tk.EW)
             self.canvas.configure(xscrollcommand=self.horizontal_scroll_bar.set)
 
             # Canvas Inner-Frame to store actual playbook data
             self.playbook_inner_frame = tk.Frame(self.canvas, bg="cyan")
-            self.canvas.create_window((0, 0), window=self.playbook_inner_frame, anchor='nw')
+            self.canvas.create_window(
+                (0, 0), window=self.playbook_inner_frame, anchor="nw"
+            )
             self.canvas.config(scrollregion=self.canvas.bbox("all"))
 
         def scroll(self, direction):
@@ -114,7 +122,9 @@ class MainApplication(tk.Frame):
     class ButtonLaunchEditor(tk.Button):
         def __init__(self, parent):
             self.parent = parent
-            tk.Button.__init__(self, parent, text="Launch Editor", command=self.on_click)
+            tk.Button.__init__(
+                self, parent, text="Launch Editor", command=self.on_click
+            )
 
         def on_click(self):
             edit_window.initialize(self.parent)
