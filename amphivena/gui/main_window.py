@@ -1,6 +1,7 @@
 import json
 import tkinter as tk
 from tkinter import filedialog
+from tkinter.scrolledtext import ScrolledText
 
 from amphivena.gui import edit_window, json_editor
 
@@ -18,27 +19,17 @@ class RootWindow(tk.Tk):
         self.geometry("600x400")
         self.resizable(True, True)
         self.option_add("*tearOff", False)
-        self.grid_rowconfigure(0, weight=1)
-        self.grid_columnconfigure(0, weight=1)
 
-        self.config(menu=RootWindow.MenuBar(self))
-        self.bind_all("<Button-4>", self.mouse_wheel_handler)
-        self.bind_all("<Button-5>", self.mouse_wheel_handler)
+        self.config(menu=RootWindow.MenuBar(self), bg="grey2")
+        self.config_file_path = tk.StringVar(self, "<no config file set>")
 
-        self.main_application = json_editor.JsonEditor(self)
-
-    def mouse_wheel_handler(self, event):
-        def scroll_direction():
-            if event.num == 5 or event.delta < 0:
-                return 1
-            return -1
-
-        self.main_application.playbook_view_frame.scroll(scroll_direction())
+        self.main_application = MainApplication(self)
 
     class MenuBar(tk.Menu):
         def __init__(self, parent):
             tk.Menu.__init__(self, parent)
 
+            self.winfo_parent()
             self.add_cascade(label="File", menu=self.file_menu())
 
         def file_menu(self):
@@ -57,10 +48,7 @@ class RootWindow(tk.Tk):
                 filetypes=[("Json", "*.json")],
             )
 
-            with open(filename, "r+") as op_conf:
-                data = op_conf.read()
-
-            print(json.loads(data))
+            self.master.config_file_path.set(filename)
 
         def close_root(self):
             self.master.destroy()
@@ -70,61 +58,42 @@ class MainApplication(tk.Frame):
     """Main Container"""
 
     def __init__(self, parent):
-        tk.Frame.__init__(self, parent, bg="gray2")
+        tk.Frame.__init__(self, parent)
+        self.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        self.grid(sticky=tk.NSEW)
-        self.grid_rowconfigure(0, weight=1)
-        self.grid_columnconfigure(0, weight=1)
+        self.controls = self.ControlFrame(self)
+        self.console = self.ConsoleFrame(self)
 
-        self.playbook_view_frame = self.PlaybookViewFrame(self)
+        self.controls.pack(
+            anchor=tk.N, fill=tk.X, expand=False, side=tk.TOP, padx=10, pady=15
+        )
+        self.console.pack(
+            anchor=tk.S, fill=tk.BOTH, expand=True, side=tk.BOTTOM, padx=5, pady=5
+        )
 
     ##################
     # Widget Classes #
     ##################
 
-    class PlaybookViewFrame(tk.Frame):
+    class ControlFrame(tk.Frame):
         def __init__(self, parent: tk.Frame):
-            tk.Frame.__init__(self, parent)
-            self.grid(row=0, column=0, padx=5, pady=5)
-            self.grid_rowconfigure(0, weight=1)
-            self.grid_columnconfigure(0, weight=1)
-
-            # Canvas used to manage scrollable region
-            self.canvas = tk.Canvas(
-                self, width=parent.winfo_vrootwidth(), height=parent.winfo_vrootheight()
+            tk.Frame.__init__(self, parent, height=100)
+            self.config_file_button = tk.Button(
+                self,
+                textvariable=self.winfo_toplevel().config_file_path,
+                command=self.open_edit_window,
             )
-            self.canvas.grid(row=0, column=0, sticky=tk.NSEW)
+            self.run_config = tk.Button(self, text=chr(0x25B6))
 
-            # Create a vertical scrollbar linked to the canvas.
-            self.vertical_scroll_bar = tk.Scrollbar(
-                self, orient=tk.VERTICAL, command=self.canvas.yview
-            )
-            self.vertical_scroll_bar.grid(row=0, column=1, sticky=tk.NS)
-            self.canvas.configure(yscrollcommand=self.vertical_scroll_bar.set)
+            self.config_file_button.pack(side=tk.LEFT, fill=tk.BOTH, expand=1, padx=10)
+            self.run_config.pack(side=tk.RIGHT, expand=0, padx=(0, 10))
 
-            # Create a horizontal scrollbar linked to the canvas.
-            self.horizontal_scroll_bar = tk.Scrollbar(
-                self, orient=tk.HORIZONTAL, command=self.canvas.xview
-            )
-            self.horizontal_scroll_bar.grid(row=1, column=0, sticky=tk.EW)
-            self.canvas.configure(xscrollcommand=self.horizontal_scroll_bar.set)
+        def open_edit_window(self):
+            # editor_window = json_editor.JsonEditor(self)
+            pass
 
-            # Canvas Inner-Frame to store actual playbook data
-            self.playbook_inner_frame = tk.Frame(self.canvas, bg="cyan")
-            self.canvas.create_window(
-                (0, 0), window=self.playbook_inner_frame, anchor="nw"
-            )
-            self.canvas.config(scrollregion=self.canvas.bbox("all"))
+    class ConsoleFrame(tk.Frame):
+        def __init__(self, parent: tk.Frame):
+            tk.Frame.__init__(self, parent, bg="white")
 
-        def scroll(self, direction):
-            self.canvas.yview_scroll(direction, "unit")
-
-    class ButtonLaunchEditor(tk.Button):
-        def __init__(self, parent):
-            self.parent = parent
-            tk.Button.__init__(
-                self, parent, text="Launch Editor", command=self.on_click
-            )
-
-        def on_click(self):
-            edit_window.initialize(self.parent)
+            self.console_text = ScrolledText(self, state="disabled")
