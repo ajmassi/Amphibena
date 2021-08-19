@@ -25,6 +25,7 @@ SOFTWARE.
 
 import collections
 import json
+import os
 import tkinter as tk
 from tkinter import filedialog as fd, messagebox as mb, simpledialog as sd, ttk
 
@@ -56,15 +57,28 @@ class Tags:
     LIST = "list"
     ROOT = "root"
     LEAF = "leaf"
-    FILE = "file"
+
+
+class EditorWindow(tk.Toplevel):
+    def __init__(self, filepath):
+        tk.Toplevel.__init__(self)
+        self.title(f"Playbook Editor - {os.path.basename(filepath.get())}")
+        self.geometry("600x400")
+        self.resizable(True, True)
+
+        JsonEditor(self, filepath)
+
+    def update_filepath(self, filepath):
+        self.title(f"Playbook Editor - {os.path.basename(filepath)}")
+        self.master.config_file_path.set(filepath)
 
 
 class JsonEditor:
-    def __init__(self, master, **options):
+    def __init__(self, parent, filepath, **options):
+        self.parent = parent
+        self.filepath = filepath.get()
 
-        self.popup_menu_actions = (
-            collections.OrderedDict()
-        )  # Format: {'id':{'text':'','action':function}, ...}
+        self.popup_menu_actions = collections.OrderedDict()
 
         if not options.get("readonly"):
 
@@ -100,7 +114,7 @@ class JsonEditor:
                 ),
             }
 
-        wrapper = ttk.Frame(master)
+        wrapper = ttk.Frame(parent)
         wrapper.pack(fill=tk.BOTH, expand=True)
 
         header_wrapper = ttk.Frame(wrapper)
@@ -111,37 +125,29 @@ class JsonEditor:
             side=tk.LEFT, anchor=tk.N
         )
 
+        # 'Save As' Button
         ttk.Button(
             header_wrapper,
-            text="Load JSON File",
-            command=lambda: self.load_json_from_file(fd.askopenfilename()),
+            text="Save As",
+            command=lambda: self.save_json_file(fd.asksaveasfilename()),
         ).pack(side=tk.RIGHT)
 
-        if not options.get("readonly"):
-            ttk.Button(
-                header_wrapper,
-                text="New JSON File",
-                command=lambda: self.create_empty_json_file(fd.asksaveasfilename()),
-            ).pack(side=tk.RIGHT)
+        # Save Button
+        ttk.Button(
+            header_wrapper,
+            text="Save",
+            command=lambda: self.save_json_file(self.filepath),
+        ).pack(side=tk.RIGHT)
 
-            ttk.Button(
-                header_wrapper,
-                text="New JSON",
-                command=lambda: self.create_json_from_data(
-                    sd.askstring("JSON name?", "name = "), {}
-                ),
-            ).pack(side=tk.RIGHT)
-
-        self.show_detail = tk.IntVar()
-        self.show_detail.set(0)
+        # Expand All Button
+        self.are_all_expanded = tk.BooleanVar()
+        self.are_all_expanded.set(False)
         ttk.Checkbutton(
             header_wrapper,
             text="Expand All",
-            variable=self.show_detail,
-            onvalue=1,
-            offvalue=0,
-            command=self.toggle_detail_view,
-        ).pack(side=tk.RIGHT)
+            variable=self.are_all_expanded,
+            command=self.expand_toggle,
+        ).pack(side=tk.LEFT)
 
         body_wrapper = ttk.Frame(wrapper)
         body_wrapper.pack(fill=tk.BOTH, expand=True)
@@ -166,24 +172,43 @@ class JsonEditor:
         self.popup_menu = tk.Menu(self.tree, tearoff=0)
         self.update_popup_menu()
 
-    def toggle_detail_view(self):
+        self.load_json_from_file(self.filepath)
+
+    def expand_toggle(self):
         """
         This function toggles between expanding the tree and closing it.
         """
-        if self.show_detail.get():
-            childrens = self.tree.get_children()
-            for child in childrens:
-                self.expand_item(child)
-        else:
-            childrens = self.tree.get_children()
-            for child in childrens:
-                self.close_item(child)
+        children = self.tree.get_children()
 
-    def set_title(self, title):
+        if self.are_all_expanded.get():
+            for child in children:
+                self.expand_tree(child)
+        else:
+            for child in children:
+                self.collapse_tree(child)
+
+    def expand_tree(self, node):
         """
-        :param title: Its a <str> object.
+        Expands the node and its children.
+        :param node: Its a <tk.Treeview> node object.
         """
-        self.title.set(title)
+        self.tree.item(node, open=True)
+        children = self.tree.get_children([node])
+        if len(children) > 0:
+            for child in children:
+                self.expand_tree(child)
+
+    def collapse_tree(self, node):
+        """
+        Closes the node and its children.
+        :param node: Its a <tk.Treeview> node object.
+        """
+        children = self.tree.get_children([node])
+        if len(children) > 0:
+            for child in children:
+                self.collapse_tree(child)
+
+        self.tree.item(node, open=False)
 
     def set_columns(self, columns=("Key", "Value")):
         """
@@ -229,32 +254,7 @@ class JsonEditor:
         self.popup_menu_actions[menu_id] = {"text": text or menu_id, "action": action}
         self.update_popup_menu()
 
-    def expand_item(self, index):
-        """
-        Expands the existing item and its children.
-        :param index: Its a <tk.Treeview> node object. Acting as a root.
-        """
-        self.tree.item(index, open=True)
-        childrens = self.tree.get_children([index])
-
-        if len(childrens) > 0:
-            for child in childrens:
-                self.expand_item(child)
-
-    def close_item(self, index):
-        """
-        Closes the existing item and its children.
-        :param index: Its a <tk.Treeview> node object. Acting as a root.
-        """
-        childrens = self.tree.get_children([index])
-
-        if len(childrens) > 0:
-            for child in childrens:
-                self.close_item(child)
-
-        self.tree.item(index, open=False)
-
-    def populate_item(self, key, value, node="", tags=[]):
+    def add_node(self, key, value, node="", tags=[]):
         """
         Performs a recursive traversal to populate the item tree starting from given node.
         Each item is a key-value pair. Root node is defined by node=''.
@@ -267,36 +267,19 @@ class JsonEditor:
 
         if type(value) is dict:
             node = self.tree.insert(
-                node, tk.END, text=str(key) + "={}", tags=tags + [Tags.DICT]
+                node, tk.END, text=str(key), tags=tags + [Tags.DICT]
             )
             for k in value:
-                self.populate_item(k, value[k], node)
+                self.add_node(k, value[k], node)
         elif type(value) is list:
             node = self.tree.insert(
-                node, tk.END, text=str(key) + "=[]", tags=tags + [Tags.LIST]
+                node, tk.END, text=str(key), tags=tags + [Tags.LIST]
             )
             for k in range(len(value)):
-                self.populate_item(k, value[k], node)
+                self.add_node(k, value[k], node)
         else:
             self.tree.insert(
                 node, tk.END, text=str(key), tags=tags + [Tags.LEAF], values=[value]
-            )
-
-    def add_item(self, key, value, parent="", tags=[]):
-        """
-        Adds a new item at the selected parent item.
-        :param key: A <str> key for the new item.
-        :param value: A value.
-        :param parent: The parent under which the new item will be added.
-        '' means absolute root, json roots are direct children of it.
-        """
-        self.populate_item(key, value, parent, tags)
-        if parent == "":
-            return
-        json_root = self.get_json_root(parent)
-        if self.tree.tag_has(Tags.FILE, json_root):
-            self.save_json_file(
-                self.get_json_filepath(json_root), self.get_value(json_root)
             )
 
     def add_item_from_input(self, vtype=ValueTypes.STR):
@@ -324,7 +307,7 @@ class JsonEditor:
                 value = fd.askopenfilename()
 
             if key and value is not None:
-                self.add_item(key, value, parent)
+                self.add_node(key, value, parent)
 
         elif self.verify_selection(Tags.LIST):
 
@@ -340,7 +323,7 @@ class JsonEditor:
                 value = fd.askopenfilename()
 
             if value is not None:
-                self.add_item(len(self.tree.get_children(parent)), value, parent)
+                self.add_node(len(self.tree.get_children(parent)), value, parent)
 
         else:
             # Leaf node in selection, change selection and call method again
@@ -363,14 +346,6 @@ class JsonEditor:
         if value:
             self.tree.item(index, values=[value])
 
-        if index == "":
-            return
-        json_root = self.get_json_root(index)
-        if self.tree.tag_has(Tags.FILE, json_root):
-            self.save_json_file(
-                self.get_json_filepath(json_root), self.get_value(json_root)
-            )
-
     def edit_item_from_input(self):
         """
         Allows editing of key and value in case of a <dict> item and only value in case of <list> item.
@@ -382,12 +357,6 @@ class JsonEditor:
 
         if is_parent_dict and mb.askyesno("Confirm?", "Edit key?"):
             key = sd.askstring("Key Input", "new key = ")
-
-            if self.verify_key(key):
-                if self.tree.tag_has(Tags.DICT, selection):
-                    key += "={}"
-                elif self.tree.tag_has(Tags.LIST, selection):
-                    key += "=[]"
 
             self.edit_item(selection, key=key)
 
@@ -416,11 +385,6 @@ class JsonEditor:
         else:
             self.remove_item(index)
 
-        if self.tree.tag_has(Tags.FILE, json_root):
-            self.save_json_file(
-                self.get_json_filepath(json_root), self.get_value(json_root)
-            )
-
     def remove_all_item(self):
         """
         :return: Removes all item from the tree.
@@ -438,35 +402,50 @@ class JsonEditor:
         try:
             with open(filepath, "r") as f:
                 data = json.load(f)
-                self.add_item(f.name, data, tags=[Tags.FILE])
+                for key in data:
+                    self.add_node(key, data[key])
         except FileNotFoundError():
             print("File not found")
         return data
 
-    def create_empty_json_file(self, filepath):
+    def save_json_file(self, filepath):
         """
-        :param filepath: An absolute filepath to create the json file.
-        :return: The <dict> object parsed from the json file.
+        Gather steps and save to json file.
+        :param filepath: path to save json to.
         """
-        self.save_json_file(filepath, {})
-        return self.load_json_from_file(filepath)
+        self.filepath = filepath
 
-    def create_json_from_data(self, name, data):
-        """
-        Creates a new json root with given data.
-        :param name: A <str> object, name of the new json root.
-        :param data: A <dict> object.
-        """
-        if self.verify_key(name):
-            self.add_item(name, data)
+        data = {}
+        for child in self.tree.get_children():
+            data[self.get_key(child)] = self.tree_to_dict(child)
 
-    def save_json_file(self, filepath, data):
-        """
-        :param filepath: An absolute filepath to save the json file.
-        :param data: A <dict> object.
-        """
         with open(filepath, "w") as f:
             json.dump(data, f)
+
+        print(f"Saved json to '{filepath}' successfully.")
+        self.parent.update_filepath(filepath)
+
+    def tree_to_dict(self, node):
+        """
+        Convert Treeview to python dict.
+        :param node: a <tk.Treeview> node object.
+        :return: The value object.
+        """
+        item = self.tree.item(node)
+        d = None
+        if self.tree.tag_has(Tags.DICT, node):
+            d = {}
+            child_nodes = self.tree.get_children(node)
+            for child in child_nodes:
+                d[self.get_key(child)] = self.tree_to_dict(child)
+        elif self.tree.tag_has(Tags.LIST, node):
+            d = []
+            child_nodes = self.tree.get_children(node)
+            for child in child_nodes:
+                d.append(self.tree_to_dict(child))
+        else:
+            d = item["values"][0]
+        return d
 
     def get_selected_index(self):
         """
@@ -486,55 +465,13 @@ class JsonEditor:
             return index
         return self.get_json_root(self.tree.parent(index))
 
-    def get_json_filepath(self, index):
-        """
-        The key of the json root item is the absolute filepath of the json file.
-        In future version this might change.
-        :param index: The item index for which the filepath is asked.
-        :return: The absolute filepath.
-        """
-        return self.get_key(self.get_json_root(index))
-
     def get_key(self, index):
         """
         Extracts the tree from the node text.
         :param index: Node index.
         :return: The key <str> object.
         """
-        item = self.tree.item(index)
-        key = item["text"]
-        if self.tree.tag_has(Tags.DICT, index) or self.tree.tag_has(Tags.LIST, index):
-            key = item["text"].split("=")[0].strip()
-        return key
-
-    def get_value(self, index):
-        """
-        This functions traverses down the tree and returns all the values.
-        :param index: Its a <tk.Treeview> node object. Acting as a root.
-        :return: The value object.
-        """
-        item = self.tree.item(index)
-        value = None
-        if self.tree.tag_has(Tags.DICT, index):
-            value = {}
-            child_nodes = self.tree.get_children(index)
-            for child in child_nodes:
-                value[self.get_key(child)] = self.get_value(child)
-        elif self.tree.tag_has(Tags.LIST, index):
-            value = []
-            child_nodes = self.tree.get_children(index)
-            for child in child_nodes:
-                value.append(self.get_value(child))
-        else:
-            value = item["values"][0]
-        return value
-
-    def get_key_value_pair(self, index):
-        """
-        :param index: A tkinter index, either <int> or <str>.
-        :return: A tuple of (key, value) format.
-        """
-        return self.get_key(index), self.get_value(index)
+        return self.tree.item(index)["text"]
 
     def show_popup_menu(self, event):
         """

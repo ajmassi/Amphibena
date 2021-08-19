@@ -21,7 +21,7 @@ class RootWindow(tk.Tk):
         self.option_add("*tearOff", False)
 
         self.config(menu=RootWindow.MenuBar(self), bg="grey2")
-        self.config_file_path = tk.StringVar(self, "<no config file set>")
+        self.config_file_path = tk.StringVar(self, "<no playbook file set>")
 
         self.main_application = MainApplication(self)
 
@@ -35,13 +35,12 @@ class RootWindow(tk.Tk):
         def file_menu(self):
             filemenu = tk.Menu(self, tearoff=0)
             filemenu.add_command(label="New")
-            filemenu.add_command(label="Load", command=self.load_file)
-            filemenu.add_command(label="Save")
+            filemenu.add_command(label="Load", command=self.load_playbook)
             filemenu.add_separator()
             filemenu.add_command(label="Exit", command=self.close_root)
             return filemenu
 
-        def load_file(self):
+        def load_playbook(self):
             filename = filedialog.askopenfilename(
                 title="Open a Amp config file",
                 initialdir="./",
@@ -89,8 +88,13 @@ class MainApplication(tk.Frame):
             self.run_config.pack(side=tk.RIGHT, expand=0, padx=(0, 10))
 
         def open_edit_window(self):
-            # editor_window = json_editor.JsonEditor(self)
-            pass
+            if self.winfo_toplevel().config_file_path.get() != "<no playbook file set>":
+                editor_window = json_editor.EditorWindow(
+                    self.winfo_toplevel().config_file_path
+                )
+                editor_window.transient(self.winfo_toplevel())
+                editor_window.grab_set()
+                self.winfo_toplevel().wait_window(editor_window)
 
     class ConsoleFrame(tk.Frame):
         def __init__(self, parent: tk.Frame):
