@@ -1,4 +1,5 @@
 import tkinter as tk
+
 import scapy.config as sc
 import scapy.layers.all
 
@@ -15,7 +16,7 @@ class EditWindow(tk.Toplevel):
         self.title("Edit Window")
         self.geometry("600x400")
         self.resizable(False, False)
-        self.option_add('*tearOff', False)
+        self.option_add("*tearOff", False)
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
@@ -23,7 +24,7 @@ class EditWindow(tk.Toplevel):
 
 
 class MainApplication(tk.Frame):
-    """ Main Container """
+    """Main Container"""
 
     def __init__(self, parent):
         tk.Frame.__init__(self, parent)
@@ -62,7 +63,9 @@ class MainApplication(tk.Frame):
 
         def _selection_change(self, *args):
             print(self._selection.get())
-            self.master.update_layermenu(self._group_detail_lookup.get(self._selection.get()))
+            self.master.update_layermenu(
+                self._group_detail_lookup.get(self._selection.get())
+            )
 
     class LayerMenu(tk.OptionMenu):
         def __init__(self, parent):
@@ -78,12 +81,14 @@ class MainApplication(tk.Frame):
             self.configure(state="disabled")
 
         def _selection_change(self, *args):
-            if self['state'] == "normal":
+            if self["state"] == "normal":
                 print(self._selection.get())
-                self.master.update_fieldmenu(self._layer_detail_lookup.get(self._selection.get()))
+                self.master.update_fieldmenu(
+                    self._layer_detail_lookup.get(self._selection.get())
+                )
 
         def update_contents(self, selected_layer_group):
-            if self['state'] == "disabled":
+            if self["state"] == "disabled":
                 self.configure(state="normal")
             else:
                 # Reset header default value without triggering selection trace event
@@ -92,15 +97,18 @@ class MainApplication(tk.Frame):
                 self.configure(state="normal")
 
             # Retrieve new set of scapy layers
-            self._layer_detail_lookup = {x.__name__: x for x in sc.conf.layers.ldict[selected_layer_group]}
+            self._layer_detail_lookup = {
+                x.__name__: x for x in sc.conf.layers.ldict[selected_layer_group]
+            }
             self._layer_names = self._layer_detail_lookup.keys()
 
             # Clean and recreate menu elements
-            self.children['menu'].delete(0, 'end')
+            self.children["menu"].delete(0, "end")
             for layer in self._layer_names:
                 # noinspection PyProtectedMember
-                self.children['menu'].add_command(label=layer,
-                                                  command=tk._setit(self._selection, layer))
+                self.children["menu"].add_command(
+                    label=layer, command=tk._setit(self._selection, layer)
+                )
 
     class FieldMenu(tk.OptionMenu):
         def __init__(self, parent):
@@ -115,7 +123,7 @@ class MainApplication(tk.Frame):
             self.configure(state="disabled")
 
         def _selection_change(self, *args):
-            if self['state'] == "normal":
+            if self["state"] == "normal":
                 print(self._selection.get())
 
         def disable(self):
@@ -123,7 +131,7 @@ class MainApplication(tk.Frame):
             self._selection.set("Fields")
 
         def update_contents(self, selected_layer):
-            if self['state'] == "disabled":
+            if self["state"] == "disabled":
                 self.configure(state="normal")
             else:
                 # Reset header default value without triggering selection trace event
@@ -132,14 +140,20 @@ class MainApplication(tk.Frame):
                 self.configure(state="normal")
 
             # Retrieve new set of scapy layer fields
-            field_lookup = selected_layer.__module__ + '.' + selected_layer.__name__ + '.fields_desc'
+            field_lookup = (
+                selected_layer.__module__
+                + "."
+                + selected_layer.__name__
+                + ".fields_desc"
+            )
 
             # This is the unholy first-attempt solution to executing and assigning a constructed scapy module reference
-            exec(compile("self._field_names = " + field_lookup, '', 'single'))
+            exec(compile("self._field_names = " + field_lookup, "", "single"))
 
             # Clean and recreate menu elements
-            self.children['menu'].delete(0, 'end')
+            self.children["menu"].delete(0, "end")
             for field in self._field_names:
                 # noinspection PyProtectedMember
-                self.children['menu'].add_command(label=field,
-                                                  command=tk._setit(self._selection, field))
+                self.children["menu"].add_command(
+                    label=field, command=tk._setit(self._selection, field)
+                )
