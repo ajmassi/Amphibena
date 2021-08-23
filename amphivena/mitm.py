@@ -22,10 +22,6 @@ class MitM:
         self._interface2 = interface2
         self.bridge_name = "ampbr"
 
-        # Configure logger
-        config_directory = pathlib.Path(__file__).parent.absolute()
-        with open(config_directory.joinpath("logger.conf")) as logger_conf:
-            logging.config.dictConfig(json.load(logger_conf))
         self.log = logging.getLogger(__name__)
 
         # Track if machine had br_netfilter enabled before mitm execution
@@ -64,6 +60,11 @@ class MitM:
 
         atexit.register(self.teardown)
         self.kernel_br_module_up()
+
+        if self._interface2:
+            self.network_tap()
+        else:
+            self.arp_poison()
 
         self.log.info(f"MitM created {self}")
         self.log.debug(f"{self} params {{{vars(self)}}}")
@@ -348,7 +349,7 @@ def get_args():
     )
 
     parsed_args = {key: value for key, value in vars(parser.parse_args()).items()}
-    print(parsed_args)
+    # print(parsed_args)
 
     return parsed_args
 
@@ -360,19 +361,19 @@ def command_line_infect():
 
     :return: None
     """
+    # Configure logger
+    config_directory = pathlib.Path(__file__).parent.absolute()
+    with open(config_directory.joinpath("logger.conf")) as logger_conf:
+        logging.config.dictConfig(json.load(logger_conf))
+
     args = get_args()
 
     interface1 = args["i"]
     interface2 = args["b"]
 
-    mitm = MitM(interface1, interface2)
+    MitM(interface1, interface2)
 
-    if mitm._interface2:
-        mitm.network_tap()
-    else:
-        mitm.arp_poison()
-
-    input("Press 'Enter' to close network infection...")
+    input("Press 'Enter' to stop network infection...")
 
 
 if __name__ == "__main__":
