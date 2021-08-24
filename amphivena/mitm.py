@@ -113,6 +113,8 @@ class MitM:
         self.kernel_br_module_down()
         self.log.info(f"MitM {self} teardown complete")
 
+        atexit.unregister(self.teardown)
+
     def kernel_br_module_up(self):
         """
         Configures kernel network bridge module to the correct state for packet capture.

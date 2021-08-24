@@ -107,13 +107,18 @@ class MainApplication(tk.Frame):
     class ControlFrame(tk.Frame):
         def __init__(self, parent: tk.Frame):
             tk.Frame.__init__(self, parent, height=100)
+
+            self.mitm = None
+            self.is_playbook_running = tk.BooleanVar(value=False)
+            self.play_pause_string = tk.StringVar(value=f"{chr(0x25B6)}")
+
             self.config_file_button = tk.Button(
                 self,
                 textvariable=self.winfo_toplevel().config_file_path,
                 command=self.open_edit_window,
             )
             self.run_playbook_button = tk.Button(
-                self, text=chr(0x25B6), command=self.run_playbook
+                self, textvariable=self.play_pause_string, command=self.run_playbook
             )
 
             self.config_file_button.pack(side=tk.LEFT, fill=tk.BOTH, expand=1, padx=10)
@@ -129,8 +134,21 @@ class MainApplication(tk.Frame):
                 self.winfo_toplevel().wait_window(editor_window)
 
         def run_playbook(self):
-            mitm.MitM("eth1", "eth2")
-            pass
+            if self.is_playbook_running.get():
+                # if packet_process.is_alive():
+                #     packet_process.terminate()
+                #     packet_process.join()
+                #     packet_process.close()
+                self.mitm.teardown()
+                self.mitm = None
+                del self.mitm
+                self.play_pause_string.set(value=f"{chr(0x25B6)}")
+            else:
+                self.mitm = mitm.MitM("eth1", "eth2")
+                # packet_process.start()
+                self.play_pause_string.set(value=f"{chr(0x25AE)}{chr(0x25AE)}")
+
+            self.is_playbook_running.set(not self.is_playbook_running.get())
 
     class ConsoleFrame(tk.Frame):
         def __init__(self, parent: tk.Frame):
