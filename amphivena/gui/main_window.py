@@ -148,7 +148,7 @@ class MainApplication(tk.Frame):
                     self.mitm = mitm.MitM("eth1", "eth2")
                     # packet_process.start()
                     self.play_pause_string.set(value=f"{chr(0x25AE)}{chr(0x25AE)}")
-                except PermissionError as e:
+                except (PermissionError, RuntimeError) as e:
                     log.error(e)
                     return
 

@@ -14,6 +14,12 @@ log = logging.getLogger(__name__)
 
 class MitM:
     def __new__(cls, *args, **kwargs):
+        """
+        Create MitM instance, verify permissions
+
+        :return: MitM object
+        :raise PermissionError: root-level permissions required
+        """
         if os.geteuid() != 0:
             raise PermissionError(
                 "Root privileges are required for 'MitM' creation, try restarting the application using 'sudo'."
@@ -28,6 +34,7 @@ class MitM:
         :param interface1: Primary network interface for MitM. Typically faces a network or server.
         :param interface2: Secondary network interface for network bridge/tap. Typically faces target client.
         :return: None
+        :raise RuntimeError: bad interface configuration
         """
         self._interface1 = interface1
         self._interface2 = interface2
@@ -55,17 +62,15 @@ class MitM:
                     shell=True,
                     check=True,
                 )
-        except subprocess.CalledProcessError as e:
-            log.exception("Provided interface not found on local machine")
-            sys.exit(e)
+        except subprocess.CalledProcessError:
+            raise RuntimeError("Provided interface not found on local machine")
 
         if (
             self._interface1
             and self._interface2
             and self._interface1 == self._interface2
         ):
-            log.error("Provided network bridge interfaces cannot be the same")
-            sys.exit(1)
+            raise RuntimeError("Provided network bridge interfaces cannot be the same")
 
         # atexit.register(self.teardown)
         self.kernel_br_module_up()
@@ -82,7 +87,11 @@ class MitM:
         self.teardown()
 
     def teardown(self):
-        # Make sure bridge is clean on exit
+        """
+        Clean up bridge on exit
+
+        :raise RuntimeError: bad interface configuration
+        """
         if (
             subprocess.run(
                 "ip address show " + shlex.quote(self.bridge_name),
@@ -116,8 +125,8 @@ class MitM:
                 log.info(f"network bridge '{self.bridge_name}' successfully removed")
 
             except subprocess.CalledProcessError as e:
-                log.warning(
-                    f"network bridge '{self.bridge_name}' teardown encountered error: \n{e}"
+                raise RuntimeError(
+                    f"Network bridge '{self.bridge_name}' teardown encountered error: \n{e}"
                 )
 
         self.kernel_br_module_down()
@@ -131,6 +140,7 @@ class MitM:
         If module is currently in use, values are saved to be restored on program exit.
 
         :return: None
+        :raise RuntimeError: failure constructing network bridge module
         """
         try:
             if (
@@ -190,7 +200,7 @@ class MitM:
             log.info("kernel module 'br_netfilter' successfully initialized")
 
         except subprocess.CalledProcessError as e:
-            log.warning(f"Error configuring kernel network bridge module: \n{e}")
+            raise RuntimeError(f"Error configuring kernel network bridge module: \n{e}")
 
     def kernel_br_module_down(self):
         """
@@ -198,6 +208,7 @@ class MitM:
         Resets original configuration or disables module as appropriate.
 
         :return: None
+        :raise RuntimeError: failure resetting network bridge module
         """
         try:
             if self.__kernel_bridge_previously_enabled:
@@ -236,8 +247,8 @@ class MitM:
             log.info("kernel module 'br_netfilter' successfully reset to initial state")
 
         except subprocess.CalledProcessError as e:
-            log.warning(
-                f"kernel network bridge module failed to reset to initial state: \n{e}"
+            raise RuntimeError(
+                f"Kernel network bridge module failed to reset to initial state: \n{e}"
             )
 
     def network_tap(self):
@@ -245,6 +256,7 @@ class MitM:
         Establishes network tap over MitM interface1 and interface2.
 
         :return: None
+        :raise RuntimeError: failure constructing bridge
         """
         # Clean existing bridge from system (could be left behind after previous shutdown error)
         if (
@@ -278,7 +290,7 @@ class MitM:
                 )
 
             except subprocess.CalledProcessError as e:
-                log.warning(f"failure tearing down old network bridge: \n{e}")
+                raise RuntimeError(f"Failure tearing down old network bridge: \n{e}")
 
         # Create bridge on system
         log.info(
@@ -325,15 +337,14 @@ class MitM:
             )
             log.info("Network tap successfully constructed")
         except subprocess.CalledProcessError as e:
-            log.exception(f"failure constructing network bridge: {e}")
+            raise RuntimeError(f"Failure constructing network bridge: {e}")
 
     def arp_poison(self):
         """
         TODO support network arp poisoning + update teardown()
-        :return: None
+        :raise NotImplementedError
         """
-        log.exception("unimplemented function 'arp_poison()'")
-        sys.exit(1)
+        raise NotImplementedError("unimplemented function 'arp_poison()'")
 
 
 def get_args():
@@ -381,9 +392,12 @@ def command_line_infect():
     interface1 = args["i"]
     interface2 = args["b"]
 
-    _ = MitM(interface1, interface2)
-
-    input("Press 'Enter' to stop network infection...")
+    try:
+        _ = MitM(interface1, interface2)
+        input("Press 'Enter' to stop network infection...")
+    except (PermissionError, RuntimeError) as e:
+        log.error(e)
+        return
 
 
 if __name__ == "__main__":
