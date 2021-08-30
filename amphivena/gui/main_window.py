@@ -144,9 +144,13 @@ class MainApplication(tk.Frame):
                 del self.mitm
                 self.play_pause_string.set(value=f"{chr(0x25B6)}")
             else:
-                self.mitm = mitm.MitM("eth1", "eth2")
-                # packet_process.start()
-                self.play_pause_string.set(value=f"{chr(0x25AE)}{chr(0x25AE)}")
+                try:
+                    self.mitm = mitm.MitM("eth1", "eth2")
+                    # packet_process.start()
+                    self.play_pause_string.set(value=f"{chr(0x25AE)}{chr(0x25AE)}")
+                except PermissionError as e:
+                    log.error(e)
+                    return
 
             self.is_playbook_running.set(not self.is_playbook_running.get())
 

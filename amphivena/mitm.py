@@ -3,13 +3,24 @@ import atexit
 import json
 import logging
 import logging.config
+import os
 import pathlib
 import shlex
 import subprocess
 import sys
 
+log = logging.getLogger(__name__)
+
 
 class MitM:
+    def __new__(cls, *args, **kwargs):
+        if os.geteuid() != 0:
+            raise PermissionError(
+                "Root privileges are required for 'MitM' creation, try restarting the application using 'sudo'."
+            )
+        else:
+            return super(MitM, cls).__new__(cls)
+
     def __init__(self, interface1, interface2=None):
         """
         Initialize MitM, verifies supplied interfaces exist.
@@ -21,8 +32,6 @@ class MitM:
         self._interface1 = interface1
         self._interface2 = interface2
         self.bridge_name = "ampbr"
-
-        self.log = logging.getLogger(__name__)
 
         # Track if machine had br_netfilter enabled before mitm execution
         self.__kernel_bridge_previously_enabled = True
@@ -47,7 +56,7 @@ class MitM:
                     check=True,
                 )
         except subprocess.CalledProcessError as e:
-            self.log.exception("Provided interface not found on local machine")
+            log.exception("Provided interface not found on local machine")
             sys.exit(e)
 
         if (
@@ -55,10 +64,10 @@ class MitM:
             and self._interface2
             and self._interface1 == self._interface2
         ):
-            self.log.error("Provided network bridge interfaces cannot be the same")
+            log.error("Provided network bridge interfaces cannot be the same")
             sys.exit(1)
 
-        atexit.register(self.teardown)
+        # atexit.register(self.teardown)
         self.kernel_br_module_up()
 
         if self._interface2:
@@ -66,8 +75,11 @@ class MitM:
         else:
             self.arp_poison()
 
-        self.log.info(f"MitM created {self}")
-        self.log.debug(f"{self} params {{{vars(self)}}}")
+        log.info(f"MitM created {self}")
+        log.debug(f"{self} params {{{vars(self)}}}")
+
+    def __del__(self):
+        self.teardown()
 
     def teardown(self):
         # Make sure bridge is clean on exit
@@ -101,19 +113,17 @@ class MitM:
                     check=True,
                 )
 
-                self.log.info(
-                    f"network bridge '{self.bridge_name}' successfully removed"
-                )
+                log.info(f"network bridge '{self.bridge_name}' successfully removed")
 
             except subprocess.CalledProcessError as e:
-                self.log.warning(
+                log.warning(
                     f"network bridge '{self.bridge_name}' teardown encountered error: \n{e}"
                 )
 
         self.kernel_br_module_down()
-        self.log.info(f"MitM {self} teardown complete")
+        log.info(f"MitM {self} teardown complete")
 
-        atexit.unregister(self.teardown)
+        # atexit.unregister(self.teardown)
 
     def kernel_br_module_up(self):
         """
@@ -129,7 +139,7 @@ class MitM:
                 ).returncode
                 == 0
             ):
-                self.log.debug(
+                log.debug(
                     "kernel module 'br_netfilter' already up, saving current settings"
                 )
                 self.__kernel_bridge_previously_enabled = True
@@ -152,7 +162,7 @@ class MitM:
                     check=True,
                 ).stdout
             else:
-                self.log.debug("activating kernel module 'br_netfilter'")
+                log.debug("activating kernel module 'br_netfilter'")
                 self.__kernel_bridge_previously_enabled = False
                 subprocess.run(
                     "modprobe br_netfilter", capture_output=True, shell=True, check=True
@@ -177,10 +187,10 @@ class MitM:
                 check=True,
             )
 
-            self.log.info("kernel module 'br_netfilter' successfully initialized")
+            log.info("kernel module 'br_netfilter' successfully initialized")
 
         except subprocess.CalledProcessError as e:
-            self.log.warning(f"Error configuring kernel network bridge module: \n{e}")
+            log.warning(f"Error configuring kernel network bridge module: \n{e}")
 
     def kernel_br_module_down(self):
         """
@@ -223,12 +233,10 @@ class MitM:
                     check=True,
                 )
 
-            self.log.info(
-                "kernel module 'br_netfilter' successfully reset to initial state"
-            )
+            log.info("kernel module 'br_netfilter' successfully reset to initial state")
 
         except subprocess.CalledProcessError as e:
-            self.log.warning(
+            log.warning(
                 f"kernel network bridge module failed to reset to initial state: \n{e}"
             )
 
@@ -270,10 +278,10 @@ class MitM:
                 )
 
             except subprocess.CalledProcessError as e:
-                self.log.warning(f"failure tearing down old network bridge: \n{e}")
+                log.warning(f"failure tearing down old network bridge: \n{e}")
 
         # Create bridge on system
-        self.log.info(
+        log.info(
             f"constructing network tap between {self._interface1} and {self._interface2}"
         )
         try:
@@ -315,16 +323,16 @@ class MitM:
                 shell=True,
                 check=True,
             )
-            self.log.info("Network tap successfully constructed")
+            log.info("Network tap successfully constructed")
         except subprocess.CalledProcessError as e:
-            self.log.exception(f"failure constructing network bridge: {e}")
+            log.exception(f"failure constructing network bridge: {e}")
 
     def arp_poison(self):
         """
         TODO support network arp poisoning + update teardown()
         :return: None
         """
-        self.log.exception("unimplemented function 'arp_poison()'")
+        log.exception("unimplemented function 'arp_poison()'")
         sys.exit(1)
 
 
@@ -373,7 +381,7 @@ def command_line_infect():
     interface1 = args["i"]
     interface2 = args["b"]
 
-    MitM(interface1, interface2)
+    _ = MitM(interface1, interface2)
 
     input("Press 'Enter' to stop network infection...")
 
