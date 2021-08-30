@@ -46,6 +46,11 @@ class MitM:
         self.__kernel_br_ipv6 = None
         self.__kernel_br_arp = None
 
+        if self._interface2 is None:
+            raise AttributeError(
+                "Only network tap supported at this time, two interfaces required"
+            )
+
         # Interface input validation
         # interface1 required in all circumstances; check interface2 if it is provided
         try:
@@ -72,7 +77,8 @@ class MitM:
         ):
             raise RuntimeError("Provided network bridge interfaces cannot be the same")
 
-        # atexit.register(self.teardown)
+        atexit.register(self.teardown)
+
         self.kernel_br_module_up()
 
         if self._interface2:
@@ -83,15 +89,14 @@ class MitM:
         log.info(f"MitM created {self}")
         log.debug(f"{self} params {{{vars(self)}}}")
 
-    def __del__(self):
-        self.teardown()
-
     def teardown(self):
         """
-        Clean up bridge on exit
+        Clean up bridge on exit and unregisters self
 
         :raise RuntimeError: bad interface configuration
         """
+        atexit.unregister(self.teardown)
+
         if (
             subprocess.run(
                 "ip address show " + shlex.quote(self.bridge_name),
@@ -131,8 +136,6 @@ class MitM:
 
         self.kernel_br_module_down()
         log.info(f"MitM {self} teardown complete")
-
-        # atexit.unregister(self.teardown)
 
     def kernel_br_module_up(self):
         """
@@ -250,6 +253,8 @@ class MitM:
             raise RuntimeError(
                 f"Kernel network bridge module failed to reset to initial state: \n{e}"
             )
+        except AttributeError as e:
+            raise e
 
     def network_tap(self):
         """
