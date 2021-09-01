@@ -395,7 +395,7 @@ class JsonEditor:
             data[self.get_key(child)] = self.tree_to_dict(child)
 
         with open(filepath, "w") as f:
-            json.dump(data, f)
+            json.dump(data, f, indent=4)
 
         print(f"Saved json to '{filepath}' successfully.")
         self.parent.update_filepath(filepath)
