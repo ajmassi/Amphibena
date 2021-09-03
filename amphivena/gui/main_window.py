@@ -5,7 +5,7 @@ import tkinter as tk
 from tkinter import filedialog
 from tkinter.scrolledtext import ScrolledText
 
-from amphivena import mitm
+from amphivena import mitm, packet_processing
 from amphivena.gui import json_editor
 
 log = logging.getLogger(__name__)
@@ -48,12 +48,23 @@ class RootWindow(tk.Tk):
         self.config_file_path = tk.StringVar(self, "<no playbook file set>")
 
         self.main_application = MainApplication(self)
+        self.__packet_process = None
 
         self.protocol("WM_DELETE_WINDOW", self.quit)
         self.bind("<Control-q>", self.quit)
         signal.signal(signal.SIGINT, self.quit)
 
+    @property
+    def packet_process(self):
+        return self.__packet_process
+
+    @packet_process.setter
+    def packet_process(self, p):
+        self.__packet_process = p
+
     def quit(self, *args):
+        if self.packet_process is not None:
+            packet_processing.proc_stop(self.packet_process)
         self.destroy()
 
     class MenuBar(tk.Menu):
@@ -135,10 +146,7 @@ class MainApplication(tk.Frame):
 
         def run_playbook(self):
             if self.is_playbook_running.get():
-                # if packet_process.is_alive():
-                #     packet_process.terminate()
-                #     packet_process.join()
-                #     packet_process.close()
+                packet_processing.proc_stop(self.winfo_toplevel().packet_process)
                 self.mitm.teardown()
                 self.mitm = None
                 del self.mitm
@@ -146,7 +154,9 @@ class MainApplication(tk.Frame):
             else:
                 try:
                     self.mitm = mitm.MitM("eth1", "eth2")
-                    # packet_process.start()
+                    self.winfo_toplevel().packet_process = (
+                        packet_processing.proc_start()
+                    )
                     self.play_pause_string.set(value=f"{chr(0x25AE)}{chr(0x25AE)}")
                 except (PermissionError, RuntimeError) as e:
                     log.error(e)
