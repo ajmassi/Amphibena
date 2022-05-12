@@ -1,10 +1,9 @@
+import time
 from unittest import mock
 
 from netfilterqueue import Packet as test_packet
 from scapy.layers.l2 import Ether
 from scapy.layers.tls.record import TLS
-
-import amphivena.packet_processing
 
 client_hello = Ether(
     bytes.fromhex(
@@ -13,8 +12,10 @@ client_hello = Ether(
 )
 
 
-def test_tls_version_change():
-    with mock.patch("amphivena.packet_processing.accept") as mock_accept:
+def test_tls_version_change(packet_processor):
+    with mock.patch(
+        "amphivena.packet_processing.PacketProcessor.finalize"
+    ) as mock_accept:
         pkt = test_packet()
 
         assert client_hello.haslayer(TLS)
@@ -25,8 +26,15 @@ def test_tls_version_change():
         #   ex. client_hello.getlayer(TLS).msg[0].version
 
         pkt.set_payload(client_hello.__bytes__())
-        amphivena.packet_processing.print_and_accept(pkt)
+        packet_processor.manipulate(pkt)
 
         assert hex(
             Ether(mock_accept.call_args[0][0].get_payload()).getlayer(TLS).version
         ) == hex(772)
+
+
+def test_run(packet_processor):
+    packet_processor.start()
+    time.sleep(2)
+    packet_processor.stop()
+    assert False
