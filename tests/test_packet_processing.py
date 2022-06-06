@@ -34,7 +34,8 @@ def test_tls_version_change(packet_processor):
 
 
 def test_run(packet_processor):
-    packet_processor.start()
-    time.sleep(2)
-    packet_processor.stop()
+    pkt = test_packet()
+    pkt.set_payload(client_hello.__bytes__())
+
+    packet_processor.pre_process(pkt)
     assert False

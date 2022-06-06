@@ -1,12 +1,12 @@
 {
   "1": {
-    "Packet": "Drop",
+    "Operation": "Drop",
     "Layer Group": "IPv4 (Internet Protocol v4).",
     "Layer": "TCP",
     "Field": "<Field (TCP,TCPerror).sport>"
   },
   "2": {
-    "Packet": "Edit",
+    "Operation": "Edit",
     "Layer Group": "IPv4 (Internet Protocol v4).",
     "Layer": "TCP",
     "Field": "<Field (TCP,TCPerror).sport>",
