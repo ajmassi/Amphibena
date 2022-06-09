@@ -2,6 +2,7 @@ import time
 from unittest import mock
 
 from netfilterqueue import Packet as test_packet
+from scapy.layers.inet import TCP
 from scapy.layers.l2 import Ether
 from scapy.layers.tls.record import TLS
 
@@ -34,8 +35,16 @@ def test_tls_version_change(packet_processor):
 
 
 def test_run(packet_processor):
-    pkt = test_packet()
-    pkt.set_payload(client_hello.__bytes__())
+    # Change TCP.sport from 38714 to 12345
+    with mock.patch(
+        "amphivena.packet_processing.PacketProcessor.finalize"
+    ) as mock_accept:
+        pkt = test_packet()
+        pkt.set_payload(client_hello.__bytes__())
 
-    packet_processor.pre_process(pkt)
-    assert False
+        packet_processor.pre_process(pkt)
+
+        assert (
+            Ether(mock_accept.call_args[0][0].get_payload()).getlayer(TCP).sport
+            == 12345
+        )

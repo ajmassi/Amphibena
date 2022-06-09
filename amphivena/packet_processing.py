@@ -4,6 +4,7 @@ import multiprocessing
 
 import netfilterqueue
 import scapy.layers.tls.handshake
+from scapy.compat import raw
 from scapy.layers.l2 import Ether
 from scapy.layers.tls.record import TLS
 
@@ -44,7 +45,7 @@ class PacketProcessor:
 
         # Parse packet
         # TODO using 'Ether' should work for initial use cases and testing, but may need to work out better future solution
-        scapy_packet = Ether(pkt)
+        scapy_packet = Ether(raw(pkt.get_payload()))
 
         try:
             if operation["Operation"] == "Drop":
@@ -53,7 +54,7 @@ class PacketProcessor:
                 self.edit_packet(pkt, scapy_packet, operation)
             else:
                 log.error(f"Unknown packet operation {operation.get('Operation')}")
-        except KeyError():
+        except KeyError:
             log.error("Packet operation [Drop, Edit] not defined.")
 
     def drop_packet(self, pkt, scapy_packet, operation):
@@ -61,16 +62,15 @@ class PacketProcessor:
             pkt.drop()
 
     def edit_packet(self, pkt, scapy_packet, operation):
-        # Basic PoC processing attempt
-        if (
-            scapy_packet.haslayer(TLS)
-            and type(scapy_packet.getlayer(TLS).msg[0])
-            is scapy.layers.tls.handshake.TLSClientHello
-        ):
-            scapy_packet.getlayer(TLS).version = 0x0304
+        # PoC processing attempt using rough config structure
+        if scapy_packet.haslayer(operation.get("Layer")):
+            setattr(
+                scapy_packet.getlayer(operation.get("Layer")),
+                operation.get("Actions").get("Modify").get("Field"),
+                12345,
+            )
 
-        scapy_packet.set_payload(scapy_packet.build())
-        self.post_process(pkt)
+        self.post_process(pkt, scapy_packet)
 
     def post_process(self, pkt, scapy_packet):
         pkt.set_payload(scapy_packet.build())

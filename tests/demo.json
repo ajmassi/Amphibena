@@ -1,9 +1,14 @@
 {
   "1": {
-    "Operation": "Drop",
+    "Operation": "Edit",
     "Layer Group": "IPv4 (Internet Protocol v4).",
     "Layer": "TCP",
-    "Field": "<Field (TCP,TCPerror).sport>"
+    "Actions": {
+      "Modify": {
+        "Field": "sport",
+        "val": "33333"
+      }
+    }
   },
   "2": {
     "Operation": "Edit",
