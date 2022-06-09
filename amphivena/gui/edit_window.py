@@ -1,7 +1,9 @@
 import tkinter as tk
 
 import scapy.config as sc
-import scapy.layers.all
+from scapy.all import *
+
+# load_layer("tls")
 
 
 def initialize(parent):
@@ -53,7 +55,7 @@ class MainApplication(tk.Frame):
     class LayerGroupMenu(tk.OptionMenu):
         def __init__(self, parent):
             self._group_detail_lookup = {y: x for (x, y) in sc.conf.layers.layers()}
-            self._group_names = self._group_detail_lookup.keys()
+            self._group_names = sorted(self._group_detail_lookup.keys())
 
             self._selection = tk.StringVar(parent)
             self._selection.set("Layer Group")
@@ -63,6 +65,7 @@ class MainApplication(tk.Frame):
 
         def _selection_change(self, *args):
             print(self._selection.get())
+            # print(self._group_detail_lookup.get(self._selection.get()))
             self.master.update_layermenu(
                 self._group_detail_lookup.get(self._selection.get())
             )
@@ -83,6 +86,7 @@ class MainApplication(tk.Frame):
         def _selection_change(self, *args):
             if self["state"] == "normal":
                 print(self._selection.get())
+                # print(self._layer_detail_lookup.get(self._selection.get()).__name__)
                 self.master.update_fieldmenu(
                     self._layer_detail_lookup.get(self._selection.get())
                 )
@@ -125,6 +129,7 @@ class MainApplication(tk.Frame):
         def _selection_change(self, *args):
             if self["state"] == "normal":
                 print(self._selection.get())
+                # print(self._field_names)
 
         def disable(self):
             self.configure(state="disabled")
@@ -155,5 +160,5 @@ class MainApplication(tk.Frame):
             for field in self._field_names:
                 # noinspection PyProtectedMember
                 self.children["menu"].add_command(
-                    label=field, command=tk._setit(self._selection, field)
+                    label=field.name, command=tk._setit(self._selection, field.name)
                 )
