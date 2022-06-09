@@ -5,8 +5,8 @@ import tkinter as tk
 from tkinter import filedialog
 from tkinter.scrolledtext import ScrolledText
 
-from amphivena import mitm, packet_processing
-from amphivena.gui import json_editor
+from amphivena import mitm, packet_processor
+from amphivena.gui import edit_window as ew, json_editor
 
 log = logging.getLogger(__name__)
 
@@ -64,7 +64,7 @@ class RootWindow(tk.Tk):
 
     def quit(self, *args):
         if self.packet_process is not None:
-            packet_processing.proc_stop(self.packet_process)
+            packet_processor.proc_stop(self.packet_process)
         self.destroy()
 
     class MenuBar(tk.Menu):
@@ -146,7 +146,7 @@ class MainApplication(tk.Frame):
 
         def run_playbook(self):
             if self.is_playbook_running.get():
-                packet_processing.proc_stop(self.winfo_toplevel().packet_process)
+                packet_processor.proc_stop(self.winfo_toplevel().packet_process)
                 self.mitm.teardown()
                 self.mitm = None
                 del self.mitm
@@ -154,9 +154,7 @@ class MainApplication(tk.Frame):
             else:
                 try:
                     self.mitm = mitm.MitM("eth1", "eth2")
-                    self.winfo_toplevel().packet_process = (
-                        packet_processing.proc_start()
-                    )
+                    self.winfo_toplevel().packet_process = packet_processor.proc_start()
                     self.play_pause_string.set(value=f"{chr(0x25AE)}{chr(0x25AE)}")
                 except (PermissionError, RuntimeError) as e:
                     log.error(e)
