@@ -20,6 +20,8 @@ class PacketProcessor:
         except FileNotFoundError():
             print("File not found")
 
+        # TODO Create config meta setting for "ordered" vs. "pool" step execution
+        self._config_is_ordered = True
         self._current_step = 1
         self._step_count = len(self._config_data)
         self.proc = None
@@ -36,55 +38,9 @@ class PacketProcessor:
             self.proc.join()
             self.proc.close()
 
-    def pre_process(self, pkt):
-        if self._current_step > self._step_count:
-            log.error("No packet operations left!")
-            return
-
-        operation = self._config_data.get(str(self._current_step))
-
-        # Parse packet
-        # TODO using 'Ether' should work for initial use cases and testing, but may need to work out better future solution
-        scapy_packet = Ether(raw(pkt.get_payload()))
-
-        try:
-            if operation["Operation"] == "Drop":
-                self.drop_packet(pkt, scapy_packet, operation)
-            elif operation["Operation"] == "Edit":
-                self.edit_packet(pkt, scapy_packet, operation)
-            else:
-                log.error(f"Unknown packet operation {operation.get('Operation')}")
-        except KeyError:
-            log.error("Packet operation [Drop, Edit] not defined.")
-
-    def drop_packet(self, pkt, scapy_packet, operation):
-        if scapy_packet.haslayer(operation.get("Layer")):
-            pkt.drop()
-
-    def edit_packet(self, pkt, scapy_packet, operation):
-        # PoC processing attempt using rough config structure
-        if scapy_packet.haslayer(operation.get("Layer")):
-            setattr(
-                scapy_packet.getlayer(operation.get("Layer")),
-                operation.get("Actions").get("Modify").get("Field"),
-                12345,
-            )
-
-        self.post_process(pkt, scapy_packet)
-
-    def post_process(self, pkt, scapy_packet):
-        pkt.set_payload(scapy_packet.build())
-        self.finalize(pkt)
-        self._current_step += 1
-
-    @staticmethod
-    def finalize(pkt):
-        # Wrapped for mocking during tests - cdef functions are un-mockable
-        pkt.accept()
-
     def examine_packets(self):
         nfqueue = netfilterqueue.NetfilterQueue()
-        nfqueue.bind(1, self.pre_process)
+        nfqueue.bind(1, self._process)
         try:
             print("starting nfqueue")
             log.info("starting nfqueue")
@@ -93,3 +49,71 @@ class PacketProcessor:
             print("shutting down nfqueue")
 
         nfqueue.unbind()
+
+    def _process(self, pkt):
+        # Parse packet
+        # TODO using 'Ether' should work for initial use cases and testing, but may need to work out better future solution
+        scapy_packet = Ether(raw(pkt.get_payload()))
+
+        instr_list = self._assemble_instruction_list(scapy_packet)
+
+        for instruction in instr_list:
+            try:
+                if instruction["Operation"] == "Drop":
+                    pkt.drop()
+                    return
+                elif instruction["Operation"] == "Edit":
+                    self._edit_packet(scapy_packet, instruction)
+                else:
+                    log.error(
+                        f"Unknown packet operation {instruction.get('Operation')}"
+                    )
+            except KeyError:
+                log.error("Packet operation [Drop, Edit] not defined.")
+
+        pkt.set_payload(scapy_packet.build())
+        self._finalize(pkt)
+
+    def _assemble_instruction_list(self, scapy_packet):
+        # Determine instruction(s) to be executed against current packet
+
+        # TODO define behavior for pool execution
+        instr_list = self._config_data
+
+        # If instructions are to be executed in order, assign next step
+        if self._config_is_ordered:
+            if self._current_step > self._step_count:
+                log.error("No packet operations left!")
+                return None
+
+            instr_list = [self._config_data.get(str(self._current_step))]
+            self._current_step += 1
+
+        # Remove instructions that do not map to current packet
+        for i in instr_list:
+            matching = self._analyze_packet(scapy_packet, i)
+            if not matching:
+                instr_list.remove(i)
+
+        return instr_list
+
+    @staticmethod
+    def _analyze_packet(scapy_packet, instruction):
+        if scapy_packet.haslayer(instruction.get("Layer")):
+            return True
+
+        return False
+
+    @staticmethod
+    def _edit_packet(scapy_packet, instruction):
+        # PoC processing attempt using rough config structure
+        setattr(
+            scapy_packet.getlayer(instruction.get("Layer")),
+            instruction.get("Actions").get("Modify").get("Field"),
+            12345,
+        )
+
+    @staticmethod
+    def _finalize(pkt):
+        # Wrapped for mocking during tests - cdef functions are un-mockable
+        pkt.accept()

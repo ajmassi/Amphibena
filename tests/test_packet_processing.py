@@ -14,7 +14,7 @@ client_hello = Ether(
 
 def test_tls_version_change(packet_processor):
     with mock.patch(
-        "amphivena.packet_processor.PacketProcessor.finalize"
+        "amphivena.packet_processor.PacketProcessor._finalize"
     ) as mock_accept:
         pkt = test_packet()
 
@@ -36,13 +36,13 @@ def test_tls_version_change(packet_processor):
 def test_run(packet_processor):
     # Change TCP.sport from 38714 to 12345
     with mock.patch(
-        "amphivena.packet_processor.PacketProcessor.finalize"
+        "amphivena.packet_processor.PacketProcessor._finalize"
     ) as mock_accept:
         pkt = test_packet()
         pkt.set_payload(client_hello.__bytes__())
 
         assert client_hello.getlayer(TCP).sport == 38714
-        packet_processor.pre_process(pkt)
+        packet_processor._process(pkt)
 
         assert (
             Ether(mock_accept.call_args[0][0].get_payload()).getlayer(TCP).sport
