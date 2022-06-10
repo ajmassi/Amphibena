@@ -5,6 +5,18 @@
       "operation": "Edit",
       "layerGroup": "IPv4 (Internet Protocol v4).",
       "layer": "TCP",
+      "conditions": [
+        {
+          "field": "sport",
+          "comparator": "is",
+          "value": 38714
+        },
+        {
+          "field": "dport",
+          "comparator": "is",
+          "value": "443"
+        }
+      ],
       "actions": {
         "modify": {
           "field": "sport",
@@ -16,7 +28,13 @@
       "operation": "Edit",
       "layerGroup": "IPv4 (Internet Protocol v4).",
       "layer": "TCP",
-      "field": "<Field (TCP,TCPerror).sport>",
+      "conditions": [
+        {
+          "field": "sport",
+          "comparator": "is",
+          "value": "5555"
+        }
+      ],
       "actions": {
         "modify": {
           "field": "<Field (TCP,TCPerror).sport>",

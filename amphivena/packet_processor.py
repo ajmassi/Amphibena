@@ -100,14 +100,31 @@ class PacketProcessor:
 
     @staticmethod
     def _analyze_packet(scapy_packet, instruction):
-        if scapy_packet.haslayer(instruction.get("layer")):
-            return True
+        # process instruction.conditions
+        layer = instruction.get("layer")
 
-        return False
+        # Check scapy_packet for layer and conditionals we are looking for
+        if scapy_packet.haslayer(layer):
+            # If we have conditionals, we will check them against the scapy_packet
+            if conditions := instruction.get("conditions"):
+                for c in conditions:
+                    # TODO add operands: !=, contains, !contains
+                    # TODO Negative check may be confusing and non-pytonic, worth reviewing
+                    if not getattr(scapy_packet.getlayer(layer), c["field"]) == int(
+                        c["value"]
+                    ):
+                        return False
+            else:
+                # If there are no conditions specified then we are done
+                return True
+        else:
+            return False
+        # TODO Pretty ugly cascade here, sometime clean up this logic?
+        return True
 
     @staticmethod
     def _edit_packet(scapy_packet, instruction):
-        # PoC processing attempt using rough config structure
+        # TODO process instruction.actions
         setattr(
             scapy_packet.getlayer(instruction.get("layer")),
             instruction.get("actions").get("modify").get("field"),
