@@ -1,4 +1,3 @@
-import time
 from unittest import mock
 
 from netfilterqueue import Packet as test_packet
@@ -15,7 +14,7 @@ client_hello = Ether(
 
 def test_tls_version_change(packet_processor):
     with mock.patch(
-        "amphivena.packet_processing.PacketProcessor.finalize"
+        "amphivena.packet_processor.PacketProcessor.finalize"
     ) as mock_accept:
         pkt = test_packet()
 
@@ -37,11 +36,12 @@ def test_tls_version_change(packet_processor):
 def test_run(packet_processor):
     # Change TCP.sport from 38714 to 12345
     with mock.patch(
-        "amphivena.packet_processing.PacketProcessor.finalize"
+        "amphivena.packet_processor.PacketProcessor.finalize"
     ) as mock_accept:
         pkt = test_packet()
         pkt.set_payload(client_hello.__bytes__())
 
+        assert client_hello.getlayer(TCP).sport == 38714
         packet_processor.pre_process(pkt)
 
         assert (
