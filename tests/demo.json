@@ -1,28 +1,31 @@
 {
-  "1": {
-    "Operation": "Edit",
-    "Layer Group": "IPv4 (Internet Protocol v4).",
-    "Layer": "TCP",
-    "Actions": {
-      "Modify": {
-        "Field": "sport",
-        "val": "33333"
+  "isOrdered": true,
+  "instructions": {
+    "1": {
+      "operation": "Edit",
+      "layerGroup": "IPv4 (Internet Protocol v4).",
+      "layer": "TCP",
+      "actions": {
+        "modify": {
+          "field": "sport",
+          "val": "33333"
+        }
       }
-    }
-  },
-  "2": {
-    "Operation": "Edit",
-    "Layer Group": "IPv4 (Internet Protocol v4).",
-    "Layer": "TCP",
-    "Field": "<Field (TCP,TCPerror).sport>",
-    "Actions": {
-      "Modify": {
-        "Field": "<Field (TCP,TCPerror).sport>",
-        "val": "10.10.10.10"
-      },
-      "Insert":{
-        "Field": "32",
-        "val": "\\x41"
+    },
+    "2": {
+      "operation": "Edit",
+      "layerGroup": "IPv4 (Internet Protocol v4).",
+      "layer": "TCP",
+      "field": "<Field (TCP,TCPerror).sport>",
+      "actions": {
+        "modify": {
+          "field": "<Field (TCP,TCPerror).sport>",
+          "val": "10.10.10.10"
+        },
+        "insert": {
+          "field": "32",
+          "val": "\\x41"
+        }
       }
     }
   }

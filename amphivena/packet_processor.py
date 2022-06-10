@@ -21,9 +21,9 @@ class PacketProcessor:
             print("File not found")
 
         # TODO Create config meta setting for "ordered" vs. "pool" step execution
-        self._config_is_ordered = True
+        self._config_is_ordered = self._config_data.get("isOrdered")
         self._current_step = 1
-        self._step_count = len(self._config_data)
+        self._step_count = len(self._config_data.get("instructions"))
         self.proc = None
 
     def start(self):
@@ -59,14 +59,14 @@ class PacketProcessor:
 
         for instruction in instr_list:
             try:
-                if instruction["Operation"] == "Drop":
+                if instruction["operation"] == "Drop":
                     pkt.drop()
                     return
-                elif instruction["Operation"] == "Edit":
+                elif instruction["operation"] == "Edit":
                     self._edit_packet(scapy_packet, instruction)
                 else:
                     log.error(
-                        f"Unknown packet operation {instruction.get('Operation')}"
+                        f"Unknown packet operation {instruction.get('operation')}"
                     )
             except KeyError:
                 log.error("Packet operation [Drop, Edit] not defined.")
@@ -78,15 +78,16 @@ class PacketProcessor:
         # Determine instruction(s) to be executed against current packet
 
         # TODO define behavior for pool execution
-        instr_list = self._config_data
-
+        instr_list = self._config_data.get("instructions")
         # If instructions are to be executed in order, assign next step
         if self._config_is_ordered:
             if self._current_step > self._step_count:
                 log.error("No packet operations left!")
                 return None
 
-            instr_list = [self._config_data.get(str(self._current_step))]
+            instr_list = [
+                self._config_data.get("instructions").get(str(self._current_step))
+            ]
             self._current_step += 1
 
         # Remove instructions that do not map to current packet
@@ -99,7 +100,7 @@ class PacketProcessor:
 
     @staticmethod
     def _analyze_packet(scapy_packet, instruction):
-        if scapy_packet.haslayer(instruction.get("Layer")):
+        if scapy_packet.haslayer(instruction.get("layer")):
             return True
 
         return False
@@ -108,8 +109,8 @@ class PacketProcessor:
     def _edit_packet(scapy_packet, instruction):
         # PoC processing attempt using rough config structure
         setattr(
-            scapy_packet.getlayer(instruction.get("Layer")),
-            instruction.get("Actions").get("Modify").get("Field"),
+            scapy_packet.getlayer(instruction.get("layer")),
+            instruction.get("actions").get("modify").get("field"),
             12345,
         )
 
