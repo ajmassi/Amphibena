@@ -124,12 +124,23 @@ class PacketProcessor:
 
     @staticmethod
     def _edit_packet(scapy_packet, instruction):
-        # TODO process instruction.actions
-        setattr(
-            scapy_packet.getlayer(instruction.get("layer")),
-            instruction.get("actions").get("modify").get("field"),
-            12345,
-        )
+        if actions := instruction.get("actions"):
+            for action in actions:
+                # TODO operation for inserting arbitrary bytes at?/before/after location
+                if action.get("type") == "modify":
+                    try:
+                        val = int(action.get("val"))
+                    except ValueError:
+                        # TODO garbage in handling (tho this applies everywhere...)
+                        val = int(action.get("val"), 16)
+
+                    setattr(
+                        scapy_packet.getlayer(instruction.get("layer")),
+                        action.get("field"),
+                        val,
+                    )
+        else:
+            log.error(f"No actions set for instruction:\n{instruction}")
 
     @staticmethod
     def _finalize(pkt):

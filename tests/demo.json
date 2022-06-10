@@ -17,12 +17,13 @@
           "value": "443"
         }
       ],
-      "actions": {
-        "modify": {
+      "actions": [
+        {
+          "type": "modify",
           "field": "sport",
-          "val": "33333"
+          "val": "0x3039"
         }
-      }
+      ]
     },
     "2": {
       "operation": "Edit",
