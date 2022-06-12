@@ -9,10 +9,8 @@ from cryptography.utils import CryptographyDeprecationWarning
 warnings.filterwarnings("ignore", category=CryptographyDeprecationWarning)
 
 import netfilterqueue
-import scapy.layers.tls.handshake
-from scapy.compat import raw
-from scapy.layers.l2 import Ether
-from scapy.layers.tls.record import TLS
+from scapy.layers.inet import IP
+from scapy.layers.tls.all import *
 
 log = logging.getLogger(__name__)
 
@@ -33,7 +31,7 @@ class PacketProcessor:
         self.proc = None
 
     def start(self):
-        self.proc = multiprocessing.Process(target=self.examine_packets)
+        self.proc = multiprocessing.Process(target=self._examine_packets)
         self.proc.start()
         return self.proc
 
@@ -44,7 +42,7 @@ class PacketProcessor:
             self.proc.join()
             self.proc.close()
 
-    def examine_packets(self):
+    def _examine_packets(self):
         nfqueue = netfilterqueue.NetfilterQueue()
         nfqueue.bind(1, self._process)
         try:
@@ -58,8 +56,9 @@ class PacketProcessor:
 
     def _process(self, pkt):
         # Parse packet
-        # TODO using 'Ether' should work for initial use cases and testing, but may need to work out better future solution
-        scapy_packet = Ether(raw(pkt.get_payload()))
+        # TODO using 'IP' should work for initial use cases and testing, but may need to work out better future solution
+        # TODO scapy needs guidance to autoparse if alternate ports used; add feature for user to configure port binding
+        scapy_packet = IP(pkt.get_payload())
 
         instr_list = self._assemble_instruction_list(scapy_packet)
 
@@ -67,9 +66,11 @@ class PacketProcessor:
             try:
                 if instruction["operation"] == "Drop":
                     pkt.drop()
+                    # self._current_step += 1
                     return
                 elif instruction["operation"] == "Edit":
                     self._edit_packet(scapy_packet, instruction)
+                    # self._current_step += 1
                 else:
                     log.error(
                         f"Unknown packet operation {instruction.get('operation')}"
@@ -94,7 +95,6 @@ class PacketProcessor:
             instr_list = [
                 self._config_data.get("instructions").get(str(self._current_step))
             ]
-            self._current_step += 1
 
         # Remove instructions that do not map to current packet
         for i in instr_list:
@@ -116,9 +116,13 @@ class PacketProcessor:
                 for c in conditions:
                     # TODO add operands: !=, contains, !contains
                     # TODO Negative check may be confusing and non-pytonic, worth reviewing
-                    if not getattr(scapy_packet.getlayer(layer), c["field"]) == int(
-                        c["value"]
-                    ):
+                    try:
+                        val = int(c.get("value"))
+                    except ValueError:
+                        # TODO garbage in handling (tho this applies everywhere...)
+                        val = int(c.get("value"), 16)
+
+                    if not getattr(scapy_packet.getlayer(layer), c["field"]) == val:
                         return False
             else:
                 # If there are no conditions specified then we are done
@@ -135,10 +139,10 @@ class PacketProcessor:
                 # TODO operation for inserting arbitrary bytes at?/before/after location
                 if action.get("type") == "modify":
                     try:
-                        val = int(action.get("val"))
+                        val = int(action.get("value"))
                     except ValueError:
                         # TODO garbage in handling (tho this applies everywhere...)
-                        val = int(action.get("val"), 16)
+                        val = int(action.get("value"), 16)
 
                     setattr(
                         scapy_packet.getlayer(instruction.get("layer")),
