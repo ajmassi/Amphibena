@@ -9,7 +9,7 @@
         {
           "field": "sport",
           "comparator": "is",
-          "value": 38714
+          "value": 38713
         },
         {
           "field": "dport",
@@ -21,7 +21,7 @@
         {
           "type": "modify",
           "field": "sport",
-          "val": "0x3039"
+          "value": "0x3039"
         }
       ]
     },
@@ -39,11 +39,11 @@
       "actions": {
         "modify": {
           "field": "<Field (TCP,TCPerror).sport>",
-          "val": "10.10.10.10"
+          "value": "10.10.10.10"
         },
         "insert": {
           "field": "32",
-          "val": "\\x41"
+          "value": "\\x41"
         }
       }
     }
