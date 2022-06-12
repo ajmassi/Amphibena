@@ -1,6 +1,12 @@
 import json
 import logging
 import multiprocessing
+import warnings
+
+from cryptography.utils import CryptographyDeprecationWarning
+
+# Suppresses warning from cryptography package (imported by scapy for tls support)
+warnings.filterwarnings("ignore", category=CryptographyDeprecationWarning)
 
 import netfilterqueue
 import scapy.layers.tls.handshake
