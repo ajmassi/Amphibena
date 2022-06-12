@@ -48,23 +48,15 @@ class RootWindow(tk.Tk):
         self.config_file_path = tk.StringVar(self, "<no playbook file set>")
 
         self.main_application = MainApplication(self)
-        self.__packet_process = None
+        self.packet_processor = None
 
         self.protocol("WM_DELETE_WINDOW", self.quit)
         self.bind("<Control-q>", self.quit)
         signal.signal(signal.SIGINT, self.quit)
 
-    @property
-    def packet_process(self):
-        return self.__packet_process
-
-    @packet_process.setter
-    def packet_process(self, p):
-        self.__packet_process = p
-
     def quit(self, *args):
-        if self.packet_process is not None:
-            packet_processor.proc_stop(self.packet_process)
+        if self.packet_processor:
+            self.packet_processor.stop()
         self.destroy()
 
     class MenuBar(tk.Menu):
@@ -146,7 +138,8 @@ class MainApplication(tk.Frame):
 
         def run_playbook(self):
             if self.is_playbook_running.get():
-                packet_processor.proc_stop(self.winfo_toplevel().packet_process)
+                if self.winfo_toplevel().packet_processor:
+                    self.winfo_toplevel().packet_processor.stop()
                 self.mitm.teardown()
                 self.mitm = None
                 del self.mitm
@@ -154,7 +147,12 @@ class MainApplication(tk.Frame):
             else:
                 try:
                     self.mitm = mitm.MitM("eth1", "eth2")
-                    self.winfo_toplevel().packet_process = packet_processor.proc_start()
+                    self.winfo_toplevel().packet_processor = (
+                        packet_processor.PacketProcessor(
+                            self.winfo_toplevel().config_file_path.get()
+                        )
+                    )
+                    self.winfo_toplevel().packet_processor.start()
                     self.play_pause_string.set(value=f"{chr(0x25AE)}{chr(0x25AE)}")
                 except (PermissionError, RuntimeError) as e:
                     log.error(e)
