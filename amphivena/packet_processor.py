@@ -12,19 +12,16 @@ import netfilterqueue
 from scapy.layers.inet import IP
 from scapy.layers.tls.all import *
 
+import playbook_utils
+
 log = logging.getLogger(__name__)
 
 
 class PacketProcessor:
     def __init__(self, config_file_path):
-        self._config_data = {}
-        try:
-            with open(config_file_path, "r") as f:
-                self._config_data = json.load(f)
-        except FileNotFoundError():
-            print("File not found")
+        self._config_data = playbook_utils.load(config_file_path)
 
-        # TODO Create config meta setting for "ordered" vs. "pool" step execution
+        # TODO Document difference between "ordered" and "pool" step execution
         self._config_is_ordered = self._config_data.get("isOrdered")
         self._current_step = 1
         self._step_count = len(self._config_data.get("instructions"))
@@ -46,6 +43,7 @@ class PacketProcessor:
         nfqueue = netfilterqueue.NetfilterQueue()
         nfqueue.bind(1, self._process)
         try:
+            # TODO fix logging
             print("starting nfqueue")
             log.info("starting nfqueue")
             nfqueue.run()
@@ -66,6 +64,7 @@ class PacketProcessor:
             try:
                 if instruction["operation"] == "Drop":
                     pkt.drop()
+                    # TODO step incrementing is broken
                     # self._current_step += 1
                     return
                 elif instruction["operation"] == "Edit":
@@ -84,7 +83,6 @@ class PacketProcessor:
     def _assemble_instruction_list(self, scapy_packet):
         # Determine instruction(s) to be executed against current packet
 
-        # TODO define behavior for pool execution
         instr_list = self._config_data.get("instructions")
         # If instructions are to be executed in order, assign next step
         if self._config_is_ordered:
@@ -108,7 +106,6 @@ class PacketProcessor:
     def _analyze_packet(scapy_packet, instruction):
         # process instruction.conditions
         layer = instruction.get("layer")
-
         # Check scapy_packet for layer and conditionals we are looking for
         if scapy_packet.haslayer(layer):
             # If we have conditionals, we will check them against the scapy_packet

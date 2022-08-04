@@ -1,0 +1,22 @@
+{
+  "isOrdered": true,
+  "instructions": {
+    "1": {
+      "operation": "Edit",
+      "layerGroup": "IPv4 (Internet Protocol v4).",
+      "layer": "TCP",
+      "conditions": [
+        {
+          "field": "sport",
+          "comparator": "is",
+          "value": 38713
+        },
+        {
+          "field": "dport",
+          "comparator": "is",
+          "value": "443"
+        }
+      ]
+    }
+  }
+}

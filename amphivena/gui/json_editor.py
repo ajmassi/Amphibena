@@ -373,6 +373,7 @@ class JsonEditor:
         :param filepath: An absolute filepath to the json file.
         :return: The <dict> object parsed from the json file.
         """
+        # TODO add config validator call
         data = {}
         try:
             with open(filepath, "r") as f:
