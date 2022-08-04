@@ -22,7 +22,7 @@ def pytest_configure():
 def new_packet_processor():
     class ProcessorFactory:
         def get(self, config_file_path):
-            return PacketProcessor(config_file_path)
+            return PacketProcessor(pytest.TEST_PLAYBOOKS_DIR + config_file_path)
 
     yield ProcessorFactory()
 

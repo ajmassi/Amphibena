@@ -11,7 +11,7 @@ def test_tcp_mods(new_packet_processor, new_tls_client_hello):
         "amphivena.packet_processor.PacketProcessor._finalize"
     ) as mock_accept:
         packet_processor = new_packet_processor.get(
-            pytest.TEST_PLAYBOOKS_DIR + "demo.json"
+            "demo.json"
         )
 
         pkt = test_packet()
