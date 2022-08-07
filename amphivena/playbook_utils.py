@@ -1,22 +1,63 @@
 import json
+
 import jsonschema
 
 schema = {
     "type": "object",
     "properties": {
-        "isOrdered": {
-            "type": "boolean"
-        },
+        "isOrdered": {"type": "boolean"},
         "instructions": {
             "type": "object",
             "patternProperties": {
-                "^.*$": {
-                    "operation": "string"
+                "^[0-9]+$": {
+                    "properties": {
+                        "operation": {"type": "string"},
+                        "layerGroup": {"type": "string"},
+                        "layer": {"type": "string"},
+                        "conditions": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "field": {
+                                        "type": "string",
+                                    },
+                                    "comparator": {
+                                        "type": "string",
+                                    },
+                                    "value": {
+                                        "type": ["string", "integer"],
+                                    },
+                                },
+                                "required": ["field", "comparator"],
+                            },
+                        },
+                        "actions": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "type": {
+                                        "type": "string",
+                                    },
+                                    "field": {
+                                        "type": "string",
+                                    },
+                                    "value": {
+                                        "type": ["string", "integer"],
+                                    },
+                                },
+                                "required": ["type", "field", "value"],
+                            },
+                        },
+                    },
+                    "required": ["operation", "layerGroup", "layer"],
                 }
-            }
-        }
+            },
+            "additionalProperties": False,
+        },
     },
-    "required": ["isOrdered"]
+    "required": ["isOrdered"],
 }
 
 
