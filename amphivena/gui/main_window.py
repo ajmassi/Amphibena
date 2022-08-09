@@ -7,6 +7,7 @@ from tkinter.scrolledtext import ScrolledText
 
 from amphivena import mitm, packet_processor
 from amphivena.gui import edit_window as ew, json_editor
+from amphivena.playbook_utils import PlaybookValidationError
 
 log = logging.getLogger(__name__)
 
@@ -157,6 +158,10 @@ class MainApplication(tk.Frame):
                 except (PermissionError, RuntimeError) as e:
                     log.error(e)
                     return
+                except PlaybookValidationError as e:
+                    # TODO need clean MitM exit on validation error
+                    log.error(e)
+                    return
 
             self.is_playbook_running.set(not self.is_playbook_running.get())
 
@@ -172,7 +177,7 @@ class MainApplication(tk.Frame):
             self.scrolled_text.tag_config("DEBUG", foreground="gray")
             self.scrolled_text.tag_config("WARNING", foreground="orange")
             self.scrolled_text.tag_config("ERROR", foreground="red")
-            self.scrolled_text.tag_config("CRITICAL", foreground="red", underline=1)
+            self.scrolled_text.tag_config("CRITICAL", foreground="red", underline=True)
             # Create a logging handler using a queue
             self.log_queue = queue.Queue()
             self.queue_handler = QueueHandler(self.log_queue)

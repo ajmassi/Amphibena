@@ -9,6 +9,7 @@ import shlex
 import subprocess
 import sys
 
+# TODO need to centralize/consolidate config options
 bridge_nf_state_filepath = "/var/lib/amphivena/br_module_state.json"
 log = logging.getLogger(__name__)
 
@@ -123,7 +124,7 @@ class MitM:
                     check=True,
                 )
 
-                log.info(f"network bridge '{self.bridge_name}' successfully removed")
+                log.info(f"network bridge '{self.bridge_name}' removed")
 
             except subprocess.CalledProcessError as e:
                 raise RuntimeError(
@@ -219,7 +220,7 @@ class MitM:
                 check=True,
             )
 
-            log.info("Kernel module 'br_netfilter' successfully initialized")
+            log.info("Kernel module 'br_netfilter' initialized")
 
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"Error configuring kernel network bridge module: \n{e}")
@@ -287,9 +288,7 @@ class MitM:
 
                 os.remove(bridge_nf_state_filepath)
 
-                log.info(
-                    "Kernel module 'br_netfilter' successfully reset to initial state"
-                )
+                log.info("Kernel module 'br_netfilter' has been reset to initial state")
 
         except subprocess.CalledProcessError as e:
             raise RuntimeError(
@@ -382,7 +381,7 @@ class MitM:
                 shell=True,
                 check=True,
             )
-            log.info("Network tap successfully constructed")
+            log.info("Network tap constructed")
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"Failure constructing network bridge: {e}")
 

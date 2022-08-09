@@ -1,4 +1,3 @@
-import json
 import logging
 import multiprocessing
 import warnings
@@ -12,14 +11,17 @@ import netfilterqueue
 from scapy.layers.inet import IP
 from scapy.layers.tls.all import *
 
-import playbook_utils
+from amphivena import playbook_utils
 
 log = logging.getLogger(__name__)
 
 
 class PacketProcessor:
     def __init__(self, config_file_path):
-        self._config_data = playbook_utils.load(config_file_path)
+        try:
+            self._config_data = playbook_utils.load(config_file_path)
+        except playbook_utils.PlaybookValidationError as e:
+            raise e
 
         # TODO Document difference between "ordered" and "pool" step execution
         self._config_is_ordered = self._config_data.get("isOrdered")
@@ -43,12 +45,11 @@ class PacketProcessor:
         nfqueue = netfilterqueue.NetfilterQueue()
         nfqueue.bind(1, self._process)
         try:
-            # TODO fix logging
-            print("starting nfqueue")
-            log.info("starting nfqueue")
+            # TODO separate process logs will not be aggregated natively, need workaround
+            log.info("Starting nfqueue")
             nfqueue.run()
         except KeyboardInterrupt:
-            print("shutting down nfqueue")
+            log.warning("Caught keyboard interrupt")
 
         nfqueue.unbind()
 
@@ -59,7 +60,7 @@ class PacketProcessor:
         scapy_packet = IP(pkt.get_payload())
 
         instr_list = self._assemble_instruction_list(scapy_packet)
-
+        log.info("Starting processing")
         for instruction in instr_list:
             try:
                 if instruction["operation"] == "Drop":
@@ -72,7 +73,7 @@ class PacketProcessor:
                     # self._current_step += 1
                 else:
                     log.error(
-                        f"Unknown packet operation {instruction.get('operation')}"
+                        f"Unknown packet operation '{instruction.get('operation')}'"
                     )
             except KeyError:
                 log.error("Packet operation [Drop, Edit] not defined.")
