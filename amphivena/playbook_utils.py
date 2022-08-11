@@ -14,7 +14,7 @@ schema = {
             "patternProperties": {
                 "^[0-9]+$": {
                     "properties": {
-                        "operation": {"type": "string"},
+                        "operation": {"type": "string", "enum": ["edit", "drop"]},
                         "layerGroup": {"type": "string"},
                         "layer": {"type": "string"},
                         "conditions": {
@@ -42,6 +42,7 @@ schema = {
                                 "properties": {
                                     "type": {
                                         "type": "string",
+                                        "enum": ["modify", "insert"],
                                     },
                                     "field": {
                                         "type": "string",
@@ -50,7 +51,7 @@ schema = {
                                         "type": ["string", "integer"],
                                     },
                                 },
-                                "required": ["type", "field", "value"],
+                                "required": ["type", "field"],
                             },
                         },
                     },

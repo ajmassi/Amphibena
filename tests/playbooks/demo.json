@@ -2,7 +2,7 @@
   "isOrdered": true,
   "instructions": {
     "1": {
-      "operation": "Edit",
+      "operation": "edit",
       "layerGroup": "IPv4 (Internet Protocol v4).",
       "layer": "TCP",
       "conditions": [
@@ -26,7 +26,7 @@
       ]
     },
     "2": {
-      "operation": "Edit",
+      "operation": "edit",
       "layerGroup": "IPv4 (Internet Protocol v4).",
       "layer": "TCP",
       "conditions": [
@@ -36,16 +36,18 @@
           "value": "5555"
         }
       ],
-      "actions": {
-        "modify": {
+      "actions": [
+        {
+          "type": "modify",
           "field": "<Field (TCP,TCPerror).sport>",
           "value": "10.10.10.10"
         },
-        "insert": {
+        {
+          "type": "insert",
           "field": "32",
           "value": "\\x41"
         }
-      }
+      ]
     }
   }
 }

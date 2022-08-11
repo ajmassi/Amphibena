@@ -63,12 +63,12 @@ class PacketProcessor:
         log.info("Starting processing")
         for instruction in instr_list:
             try:
-                if instruction["operation"] == "Drop":
+                if instruction["operation"] == "drop":
                     pkt.drop()
                     # TODO step incrementing is broken
                     # self._current_step += 1
                     return
-                elif instruction["operation"] == "Edit":
+                elif instruction["operation"] == "edit":
                     self._edit_packet(scapy_packet, instruction)
                     # self._current_step += 1
                 else:
@@ -76,7 +76,7 @@ class PacketProcessor:
                         f"Unknown packet operation '{instruction.get('operation')}'"
                     )
             except KeyError:
-                log.error("Packet operation [Drop, Edit] not defined.")
+                log.error("Packet operation [drop, edit] not defined.")
 
         pkt.set_payload(scapy_packet.build())
         self._finalize(pkt)
@@ -112,7 +112,7 @@ class PacketProcessor:
             # If we have conditionals, we will check them against the scapy_packet
             if conditions := instruction.get("conditions"):
                 for c in conditions:
-                    # TODO add operands: !=, contains, !contains
+                    # TODO add operands: !=, contains, !contains, exists, !exists
                     # TODO Negative check may be confusing and non-pytonic, worth reviewing
                     try:
                         val = int(c.get("value"))
