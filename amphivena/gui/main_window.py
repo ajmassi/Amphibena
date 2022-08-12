@@ -139,9 +139,10 @@ class MainApplication(tk.Frame):
                 editor_window = json_editor.EditorWindow(
                     self.winfo_toplevel().playbook_file_path
                 )
-                editor_window.transient(self.winfo_toplevel())
-                editor_window.grab_set()
-                self.winfo_toplevel().wait_window(editor_window)
+                if editor_window.winfo_exists():
+                    editor_window.transient(self.winfo_toplevel())
+                    editor_window.grab_set()
+                    self.winfo_toplevel().wait_window(editor_window)
 
         def run_playbook(self):
             if self.is_playbook_running.get():
