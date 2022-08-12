@@ -46,7 +46,7 @@ class RootWindow(tk.Tk):
         self.option_add("*tearOff", False)
 
         self.config(menu=RootWindow.MenuBar(self), bg="grey2")
-        self.config_file_path = tk.StringVar(self, "<no playbook file set>")
+        self.playbook_file_path = tk.StringVar(self, "<no playbook file set>")
 
         self.main_application = MainApplication(self)
         self.packet_processor = None
@@ -77,12 +77,12 @@ class RootWindow(tk.Tk):
 
         def load_playbook(self):
             filename = filedialog.askopenfilename(
-                title="Open a Amp config file",
+                title="Open a Amp playbook file",
                 initialdir="./",
                 filetypes=[("Json", "*.json")],
             )
 
-            self.master.config_file_path.set(filename)
+            self.master.playbook_file_path.set(filename)
 
             log.info(f"Selected playbook: {filename}")
 
@@ -116,22 +116,27 @@ class MainApplication(tk.Frame):
             self.is_playbook_running = tk.BooleanVar(value=False)
             self.play_pause_string = tk.StringVar(value=f"{chr(0x25B6)}")
 
-            self.config_file_button = tk.Button(
+            self.playbook_file_path_button = tk.Button(
                 self,
-                textvariable=self.winfo_toplevel().config_file_path,
+                textvariable=self.winfo_toplevel().playbook_file_path,
                 command=self.open_edit_window,
             )
             self.run_playbook_button = tk.Button(
                 self, textvariable=self.play_pause_string, command=self.run_playbook
             )
 
-            self.config_file_button.pack(side=tk.LEFT, fill=tk.BOTH, expand=1, padx=10)
+            self.playbook_file_path_button.pack(
+                side=tk.LEFT, fill=tk.BOTH, expand=1, padx=10
+            )
             self.run_playbook_button.pack(side=tk.RIGHT, expand=0, padx=(0, 10))
 
         def open_edit_window(self):
-            if self.winfo_toplevel().config_file_path.get() != "<no playbook file set>":
+            if (
+                self.winfo_toplevel().playbook_file_path.get()
+                != "<no playbook file set>"
+            ):
                 editor_window = json_editor.EditorWindow(
-                    self.winfo_toplevel().config_file_path
+                    self.winfo_toplevel().playbook_file_path
                 )
                 editor_window.transient(self.winfo_toplevel())
                 editor_window.grab_set()
@@ -150,7 +155,7 @@ class MainApplication(tk.Frame):
                     self.mitm = mitm.MitM("eth1", "eth2")
                     self.winfo_toplevel().packet_processor = (
                         packet_processor.PacketProcessor(
-                            self.winfo_toplevel().config_file_path.get()
+                            self.winfo_toplevel().playbook_file_path.get()
                         )
                     )
                     self.winfo_toplevel().packet_processor.start()

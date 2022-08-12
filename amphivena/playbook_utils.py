@@ -71,9 +71,9 @@ class PlaybookValidationError(Exception):
         super().__init__(self.message)
 
 
-def load(config_file_path):
+def load(playbook_file_path):
     try:
-        with open(config_file_path, "r") as f:
+        with open(playbook_file_path, "r") as f:
             playbook_obj = json.load(f)
 
         jsonschema.validate(playbook_obj, schema)

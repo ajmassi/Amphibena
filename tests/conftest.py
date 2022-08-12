@@ -21,8 +21,8 @@ def pytest_configure():
 @pytest.fixture()
 def new_packet_processor():
     class ProcessorFactory:
-        def get(self, config_file_path):
-            return PacketProcessor(pytest.TEST_PLAYBOOKS_DIR + config_file_path)
+        def get(self, playbook_file):
+            return PacketProcessor(pytest.TEST_PLAYBOOKS_DIR + playbook_file)
 
     yield ProcessorFactory()
 

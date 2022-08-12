@@ -93,7 +93,7 @@ def test_required_fields_conditions(new_packet_processor):
         packet_processor = new_packet_processor.get("mocked.json")
         assert packet_processor is not None
         assert packet_processor._step_count == 1
-        assert packet_processor._config_is_ordered is False
+        assert packet_processor._playbook_is_ordered is False
 
 
 def test_required_fields_actions(new_packet_processor):
@@ -122,7 +122,7 @@ def test_required_fields_actions(new_packet_processor):
         packet_processor = new_packet_processor.get("mocked.json")
         assert packet_processor is not None
         assert packet_processor._step_count == 1
-        assert packet_processor._config_is_ordered is False
+        assert packet_processor._playbook_is_ordered is False
 
 
 def test_invalid_operation(new_packet_processor):

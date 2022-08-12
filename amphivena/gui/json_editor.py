@@ -45,7 +45,7 @@ class EditorWindow(tk.Toplevel):
 
     def update_filepath(self, filepath):
         self.title(f"Playbook Editor - {os.path.basename(filepath)}")
-        self.master.config_file_path.set(filepath)
+        self.master.playbook_file_path.set(filepath)
 
 
 class JsonEditor:
@@ -373,7 +373,7 @@ class JsonEditor:
         :param filepath: An absolute filepath to the json file.
         :return: The <dict> object parsed from the json file.
         """
-        # TODO add config validator call
+        # TODO add playbook validator call
         data = {}
         try:
             with open(filepath, "r") as f:

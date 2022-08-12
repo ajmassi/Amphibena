@@ -17,16 +17,16 @@ log = logging.getLogger(__name__)
 
 
 class PacketProcessor:
-    def __init__(self, config_file_path):
+    def __init__(self, playbook_file_path):
         try:
-            self._config_data = playbook_utils.load(config_file_path)
+            self._playbook_data = playbook_utils.load(playbook_file_path)
         except playbook_utils.PlaybookValidationError as e:
             raise e
 
         # TODO Document difference between "ordered" and "pool" step execution
-        self._config_is_ordered = self._config_data.get("isOrdered")
+        self._playbook_is_ordered = self._playbook_data.get("isOrdered")
         self._current_step = 1
-        self._step_count = len(self._config_data.get("instructions"))
+        self._step_count = len(self._playbook_data.get("instructions"))
         self.proc = None
 
     def start(self):
@@ -84,15 +84,15 @@ class PacketProcessor:
     def _assemble_instruction_list(self, scapy_packet):
         # Determine instruction(s) to be executed against current packet
 
-        instr_list = self._config_data.get("instructions")
+        instr_list = self._playbook_data.get("instructions")
         # If instructions are to be executed in order, assign next step
-        if self._config_is_ordered:
+        if self._playbook_is_ordered:
             if self._current_step > self._step_count:
                 log.error("No packet operations left!")
                 return None
 
             instr_list = [
-                self._config_data.get("instructions").get(str(self._current_step))
+                self._playbook_data.get("instructions").get(str(self._current_step))
             ]
 
         # Remove instructions that do not map to current packet
