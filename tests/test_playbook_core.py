@@ -7,11 +7,13 @@ from amphivena.playbook_utils import PlaybookValidationError
 
 
 def test_file_not_found(new_packet_processor):
+    """Playbook does not exist."""
     with pytest.raises(PlaybookValidationError, match="^Playbook not found: "):
         new_packet_processor.get("foo/bar.json")
 
 
 def test_json_error(new_packet_processor):
+    """Playbook with invalid json."""
     playbook_json = """
     {"isOrdered: true}
     """
@@ -25,6 +27,7 @@ def test_json_error(new_packet_processor):
 
 
 def test_required_fields_root(new_packet_processor):
+    """Playbook missing required root field."""
     playbook_json = "{}"
     with pytest.raises(
         PlaybookValidationError,
@@ -34,7 +37,8 @@ def test_required_fields_root(new_packet_processor):
             new_packet_processor.get("mocked.json")
 
 
-def test_required_fields_step(new_packet_processor):
+def test_required_fields_instruction(new_packet_processor):
+    """Playbook missing required instruction field(s)."""
     playbook_no_edit = """{"isOrdered":true,"instructions":{"1":{"layerGroup":"IPv4 (Internet Protocol v4).","layer":"TCP"}}}"""
     playbook_no_layergroup = (
         """{"isOrdered":true,"instructions":{"1":{"operation":"edit","layer":"TCP"}}}"""
@@ -65,7 +69,8 @@ def test_required_fields_step(new_packet_processor):
             new_packet_processor.get("mocked.json")
 
 
-def test_required_fields_conditions(new_packet_processor):
+def test_required_fields_condition(new_packet_processor):
+    """Playbook missing condition fields."""
     playbook_no_field = """{"isOrdered":true,"instructions":{"1":{"operation":"edit","layerGroup":"IPv4 (Internet Protocol v4).","layer":"TCP","conditions":[{"comparator":"is","value":38713}]}}}"""
     playbook_no_comparator = """{"isOrdered":true,"instructions":{"1":{"operation":"edit","layerGroup":"IPv4 (Internet Protocol v4).","layer":"TCP","conditions":[{"field":"sport","value":38713}]}}}"""
     playbook_no_value = """{"isOrdered":false,"instructions":{"1":{"operation":"edit","layerGroup":"IPv4 (Internet Protocol v4).","layer":"TCP","conditions":[{"field":"sport","comparator":"is"}]}}}"""
@@ -96,7 +101,8 @@ def test_required_fields_conditions(new_packet_processor):
         assert packet_processor._playbook_is_ordered is False
 
 
-def test_required_fields_actions(new_packet_processor):
+def test_required_fields_action(new_packet_processor):
+    """Playbook missing required action fields."""
     playbook_no_type = """{"isOrdered":true,"instructions":{"1":{"operation":"edit","layerGroup":"IPv4 (Internet Protocol v4).","layer":"TCP","actions":[{"field":"sport","value":"0x3039"}]}}}"""
     playbook_no_field = """{"isOrdered":true,"instructions":{"1":{"operation":"edit","layerGroup":"IPv4 (Internet Protocol v4).","layer":"TCP","actions":[{"type":"modify","value":"0x3039"}]}}}"""
     playbook_no_value = """{"isOrdered":false,"instructions":{"1":{"operation":"edit","layerGroup":"IPv4 (Internet Protocol v4).","layer":"TCP","actions":[{"type":"modify","field":"sport"}]}}}"""
@@ -126,6 +132,7 @@ def test_required_fields_actions(new_packet_processor):
 
 
 def test_invalid_operation(new_packet_processor):
+    """Playbook with invalid instruction.operation value."""
     playbook_json = """{"isOrdered":true,"instructions":{"1":{"operation":"TRASH","layerGroup":"IPv4 (Internet Protocol v4).","layer":"TCP"}}}"""
     with pytest.raises(
         PlaybookValidationError,

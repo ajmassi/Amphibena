@@ -66,12 +66,25 @@ schema = {
 
 
 class PlaybookValidationError(Exception):
+    """
+    Catch-all for errors that can occur during validation of playbook.
+
+    :return: PlaybookValidationError
+    """
+
     def __init__(self, message):
         self.message = message
         super().__init__(self.message)
 
 
 def load(playbook_file_path):
+    """
+    Load playbook file and validate against schema.
+
+    :param playbook_file_path: string representation of playbook file path.
+    :return: dict
+    :raise PlaybookValidationError: Can expect JSONDecodeError, ValidationError, and FileNotFoundError.
+    """
     try:
         with open(playbook_file_path, "r") as f:
             playbook_obj = json.load(f)

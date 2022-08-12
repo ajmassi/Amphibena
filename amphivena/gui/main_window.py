@@ -110,6 +110,10 @@ class MainApplication(tk.Frame):
     ##################
 
     class ControlFrame(tk.Frame):
+        """
+        Contains the controls for selecting playbook, opening editor, and beginning execution.
+        """
+
         def __init__(self, parent: tk.Frame):
             tk.Frame.__init__(self, parent, height=100)
 
@@ -172,6 +176,10 @@ class MainApplication(tk.Frame):
             self.is_playbook_running.set(not self.is_playbook_running.get())
 
     class ConsoleFrame(tk.Frame):
+        """
+        Display Amphivena logs in real time.
+        """
+
         def __init__(self, parent: tk.Frame):
             tk.Frame.__init__(self, parent, bg="white")
 

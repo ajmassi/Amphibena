@@ -9,7 +9,6 @@ import shlex
 import subprocess
 import sys
 
-# TODO need to centralize/consolidate config options
 bridge_nf_state_filepath = "/var/lib/amphivena/br_module_state.json"
 log = logging.getLogger(__name__)
 
@@ -134,7 +133,8 @@ class MitM:
         self.kernel_br_module_down()
         log.info(f"MitM {self} teardown complete")
 
-    def kernel_br_module_up(self):
+    @staticmethod
+    def kernel_br_module_up():
         """
         Configures kernel network bridge module to the correct state for packet capture.
         If module is currently in use, values are saved to be restored on program exit.
@@ -225,7 +225,8 @@ class MitM:
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"Error configuring kernel network bridge module: \n{e}")
 
-    def kernel_br_module_down(self):
+    @staticmethod
+    def kernel_br_module_down():
         """
         Restore system's kernel network bridge module to initial state.
         Resets original configuration or disables module as appropriate.
@@ -387,7 +388,6 @@ class MitM:
 
     def arp_poison(self):
         """
-        TODO support network arp poisoning + update teardown()
         :raise NotImplementedError
         """
         raise NotImplementedError("unimplemented function 'arp_poison()'")
