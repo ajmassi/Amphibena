@@ -82,9 +82,10 @@ class RootWindow(tk.Tk):
                 filetypes=[("Json", "*.json")],
             )
 
-            self.master.playbook_file_path.set(filename)
-
-            log.info(f"Selected playbook: {filename}")
+            # Verify a file was selected
+            if filename:
+                self.master.playbook_file_path.set(filename)
+                log.info(f"Selected playbook: {filename}")
 
 
 class MainApplication(tk.Frame):
