@@ -153,19 +153,18 @@ class MainApplication(tk.Frame):
                 self.play_pause_string.set(value=f"{chr(0x25B6)}")
             else:
                 try:
-                    self.mitm = mitm.MitM("eth1", "eth2")
                     self.winfo_toplevel().packet_processor = (
                         packet_processor.PacketProcessor(
                             self.winfo_toplevel().playbook_file_path.get()
                         )
                     )
+                    self.mitm = mitm.MitM("eth1", "eth2")
                     self.winfo_toplevel().packet_processor.start()
                     self.play_pause_string.set(value=f"{chr(0x25AE)}{chr(0x25AE)}")
                 except (PermissionError, RuntimeError) as e:
                     log.error(e)
                     return
                 except PlaybookValidationError as e:
-                    # TODO need clean MitM exit on validation error
                     log.error(e)
                     return
 
