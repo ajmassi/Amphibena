@@ -1,8 +1,14 @@
 import collections
 import json
+import logging
 import os
 import tkinter as tk
 from tkinter import filedialog as fd, messagebox as mb, simpledialog as sd, ttk
+
+from amphivena import playbook_utils
+
+log = logging.getLogger(__name__)
+
 
 """
 Layout:
@@ -45,7 +51,7 @@ class EditorWindow(tk.Toplevel):
 
     def update_filepath(self, filepath):
         self.title(f"Playbook Editor - {os.path.basename(filepath)}")
-        self.master.config_file_path.set(filepath)
+        self.master.playbook_file_path.set(filepath)
 
 
 class JsonEditor:
@@ -147,7 +153,11 @@ class JsonEditor:
         self.popup_menu = tk.Menu(self.tree, tearoff=0)
         self.update_popup_menu()
 
-        self.load_json_from_file(self.filepath)
+        try:
+            self.load_json_from_file(self.filepath)
+        except playbook_utils.PlaybookValidationError as e:
+            log.error(e)
+            self.parent.destroy()
 
     def expand_toggle(self):
         """
@@ -373,14 +383,13 @@ class JsonEditor:
         :param filepath: An absolute filepath to the json file.
         :return: The <dict> object parsed from the json file.
         """
-        data = {}
         try:
-            with open(filepath, "r") as f:
-                data = json.load(f)
-                for key in data:
-                    self.add_node(key, data[key])
-        except FileNotFoundError():
-            print("File not found")
+            data = playbook_utils.load(filepath)
+            for key in data:
+                self.add_node(key, data[key])
+        except playbook_utils.PlaybookValidationError as e:
+            raise e
+
         return data
 
     def save_json_file(self, filepath):
@@ -395,7 +404,7 @@ class JsonEditor:
             data[self.get_key(child)] = self.tree_to_dict(child)
 
         with open(filepath, "w") as f:
-            json.dump(data, f)
+            json.dump(data, f, indent=4)
 
         print(f"Saved json to '{filepath}' successfully.")
         self.parent.update_filepath(filepath)

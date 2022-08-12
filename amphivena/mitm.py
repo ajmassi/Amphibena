@@ -3,13 +3,32 @@ import atexit
 import json
 import logging
 import logging.config
+import os
 import pathlib
 import shlex
 import subprocess
 import sys
 
+bridge_nf_state_filepath = "/var/lib/amphivena/br_module_state.json"
+log = logging.getLogger(__name__)
+
 
 class MitM:
+    def __new__(cls, *args, **kwargs):
+        """
+        Create MitM instance, verify permissions
+
+        :return: MitM object
+        :raise PermissionError: root-level permissions required
+        """
+        if os.geteuid() != 0:
+            raise PermissionError(
+                "Root privileges are required for 'MitM' creation, try restarting the application using 'sudo'."
+            )
+        else:
+            os.makedirs(os.path.dirname(bridge_nf_state_filepath), exist_ok=True)
+            return super(MitM, cls).__new__(cls)
+
     def __init__(self, interface1, interface2=None):
         """
         Initialize MitM, verifies supplied interfaces exist.
@@ -17,18 +36,16 @@ class MitM:
         :param interface1: Primary network interface for MitM. Typically faces a network or server.
         :param interface2: Secondary network interface for network bridge/tap. Typically faces target client.
         :return: None
+        :raise RuntimeError: bad interface configuration
         """
         self._interface1 = interface1
         self._interface2 = interface2
         self.bridge_name = "ampbr"
 
-        self.log = logging.getLogger(__name__)
-
-        # Track if machine had br_netfilter enabled before mitm execution
-        self.__kernel_bridge_previously_enabled = True
-        self.__kernel_br_ipv4 = None
-        self.__kernel_br_ipv6 = None
-        self.__kernel_br_arp = None
+        if self._interface2 is None:
+            raise AttributeError(
+                "Only network tap supported at this time, two interfaces required"
+            )
 
         # Interface input validation
         # interface1 required in all circumstances; check interface2 if it is provided
@@ -46,19 +63,18 @@ class MitM:
                     shell=True,
                     check=True,
                 )
-        except subprocess.CalledProcessError as e:
-            self.log.exception("Provided interface not found on local machine")
-            sys.exit(e)
+        except subprocess.CalledProcessError:
+            raise RuntimeError("Provided interface not found on local machine")
 
         if (
             self._interface1
             and self._interface2
             and self._interface1 == self._interface2
         ):
-            self.log.error("Provided network bridge interfaces cannot be the same")
-            sys.exit(1)
+            raise RuntimeError("Provided network bridge interfaces cannot be the same")
 
         atexit.register(self.teardown)
+
         self.kernel_br_module_up()
 
         if self._interface2:
@@ -66,11 +82,17 @@ class MitM:
         else:
             self.arp_poison()
 
-        self.log.info(f"MitM created {self}")
-        self.log.debug(f"{self} params {{{vars(self)}}}")
+        log.info(f"MitM created {self}")
+        log.debug(f"{self} params {{{vars(self)}}}")
 
     def teardown(self):
-        # Make sure bridge is clean on exit
+        """
+        Clean up bridge on exit and unregisters self
+
+        :raise RuntimeError: bad interface configuration
+        """
+        atexit.unregister(self.teardown)
+
         if (
             subprocess.run(
                 "ip address show " + shlex.quote(self.bridge_name),
@@ -101,61 +123,84 @@ class MitM:
                     check=True,
                 )
 
-                self.log.info(
-                    f"network bridge '{self.bridge_name}' successfully removed"
-                )
+                log.info(f"network bridge '{self.bridge_name}' removed")
 
             except subprocess.CalledProcessError as e:
-                self.log.warning(
-                    f"network bridge '{self.bridge_name}' teardown encountered error: \n{e}"
+                raise RuntimeError(
+                    f"Network bridge '{self.bridge_name}' teardown encountered error: \n{e}"
                 )
 
         self.kernel_br_module_down()
-        self.log.info(f"MitM {self} teardown complete")
+        log.info(f"MitM {self} teardown complete")
 
-    def kernel_br_module_up(self):
+    @staticmethod
+    def kernel_br_module_up():
         """
         Configures kernel network bridge module to the correct state for packet capture.
         If module is currently in use, values are saved to be restored on program exit.
 
         :return: None
+        :raise RuntimeError: failure constructing network bridge module
         """
         try:
-            if (
-                subprocess.run(
-                    "test -d /proc/sys/net/bridge", capture_output=True, shell=True
-                ).returncode
-                == 0
-            ):
-                self.log.debug(
-                    "kernel module 'br_netfilter' already up, saving current settings"
+            # State file should have been deleted on clean exit
+            # If it is still present, then notify the user and initialize module normally
+            if os.path.exists(bridge_nf_state_filepath):
+                log.warning(
+                    "Amphivena did not close correctly last session.\n"
+                    "Initial system br_netfilter state will be restored at the end of this session"
                 )
-                self.__kernel_bridge_previously_enabled = True
-                self.__kernel_br_ipv4 = subprocess.run(
-                    "cat /proc/sys/net/bridge/bridge-nf-call-iptables",
-                    capture_output=True,
-                    shell=True,
-                    check=True,
-                ).stdout
-                self.__kernel_br_ipv6 = subprocess.run(
-                    "cat /proc/sys/net/bridge/bridge-nf-call-ip6tables",
-                    capture_output=True,
-                    shell=True,
-                    check=True,
-                ).stdout
-                self.__kernel_br_arp = subprocess.run(
-                    "cat /proc/sys/net/bridge/bridge-nf-call-arptables",
-                    capture_output=True,
-                    shell=True,
-                    check=True,
-                ).stdout
+                log.warning(
+                    "Make sure to close the program cleanly using the UI or '^C'"
+                )
             else:
-                self.log.debug("activating kernel module 'br_netfilter'")
-                self.__kernel_bridge_previously_enabled = False
-                subprocess.run(
-                    "modprobe br_netfilter", capture_output=True, shell=True, check=True
-                )
+                # The br_netfilter kernel module's state is saved to a json file in case of unclean exit
+                kernel_br = {}
 
+                if (
+                    subprocess.run(
+                        "test -d /proc/sys/net/bridge/", capture_output=True, shell=True
+                    ).returncode
+                    == 0
+                ):
+                    # Store previous module state if it is active
+                    log.debug(
+                        "Kernel module 'br_netfilter' already up, saving current settings"
+                    )
+                    kernel_br["bridge-nf-call-iptables"] = int(
+                        subprocess.run(
+                            "cat /proc/sys/net/bridge/bridge-nf-call-iptables",
+                            capture_output=True,
+                            shell=True,
+                            check=True,
+                        ).stdout
+                    )
+                    kernel_br["bridge-nf-call-ip6tables"] = int(
+                        subprocess.run(
+                            "cat /proc/sys/net/bridge/bridge-nf-call-ip6tables",
+                            capture_output=True,
+                            shell=True,
+                            check=True,
+                        ).stdout
+                    )
+                    kernel_br["bridge-nf-call-arptables"] = int(
+                        subprocess.run(
+                            "cat /proc/sys/net/bridge/bridge-nf-call-arptables",
+                            capture_output=True,
+                            shell=True,
+                            check=True,
+                        ).stdout
+                    )
+                else:
+                    kernel_br["br_netfilter_inactive"] = True
+
+                with open(bridge_nf_state_filepath, "w") as f:
+                    json.dump(kernel_br, f, indent=4)
+
+            log.debug("Configuring kernel module 'br_netfilter'")
+            subprocess.run(
+                "modprobe br_netfilter", capture_output=True, shell=True, check=True
+            )
             subprocess.run(
                 "echo 1 > /proc/sys/net/bridge/bridge-nf-call-iptables",
                 capture_output=True,
@@ -175,66 +220,90 @@ class MitM:
                 check=True,
             )
 
-            self.log.info("kernel module 'br_netfilter' successfully initialized")
+            log.info("Kernel module 'br_netfilter' initialized")
 
         except subprocess.CalledProcessError as e:
-            self.log.warning(f"Error configuring kernel network bridge module: \n{e}")
+            raise RuntimeError(f"Error configuring kernel network bridge module: \n{e}")
 
-    def kernel_br_module_down(self):
+    @staticmethod
+    def kernel_br_module_down():
         """
         Restore system's kernel network bridge module to initial state.
         Resets original configuration or disables module as appropriate.
 
         :return: None
+        :raise RuntimeError: failure resetting network bridge module
         """
+        # Retrieve the system's initial bridge module state
+        kernel_br = {}
         try:
-            if self.__kernel_bridge_previously_enabled:
-                subprocess.run(
-                    "echo "
-                    + shlex.quote(self.__kernel_br_ipv4.decode("utf-8").rstrip())
-                    + " > /proc/sys/net/bridge/bridge-nf-call-iptables",
-                    capture_output=True,
-                    shell=True,
-                    check=True,
-                )
-                subprocess.run(
-                    "echo "
-                    + shlex.quote(self.__kernel_br_ipv6.decode("utf-8").rstrip())
-                    + " > /proc/sys/net/bridge/bridge-nf-call-ip6tables",
-                    capture_output=True,
-                    shell=True,
-                    check=True,
-                )
-                subprocess.run(
-                    "echo "
-                    + shlex.quote(self.__kernel_br_arp.decode("utf-8").rstrip())
-                    + " > /proc/sys/net/bridge/bridge-nf-call-arptables",
-                    capture_output=True,
-                    shell=True,
-                    check=True,
-                )
-            else:
-                subprocess.run(
-                    "modprobe -r br_netfilter",
-                    capture_output=True,
-                    shell=True,
-                    check=True,
-                )
+            with open(bridge_nf_state_filepath, "r") as f:
+                kernel_br = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            # If the file does not exist for some reason or has a formatting error we will ignore it
+            pass
 
-            self.log.info(
-                "kernel module 'br_netfilter' successfully reset to initial state"
-            )
+        try:
+            # If the file had parse-able content
+            if kernel_br:
+                if "bridge-nf-call-iptables" in kernel_br:
+                    subprocess.run(
+                        "echo "
+                        + str(kernel_br.get("bridge-nf-call-iptables"))
+                        + " > /proc/sys/net/bridge/bridge-nf-call-iptables",
+                        capture_output=True,
+                        shell=True,
+                        check=True,
+                    )
+
+                if "bridge-nf-call-ip6tables" in kernel_br:
+                    subprocess.run(
+                        "echo "
+                        + str(kernel_br.get("bridge-nf-call-ip6tables"))
+                        + " > /proc/sys/net/bridge/bridge-nf-call-ip6tables",
+                        capture_output=True,
+                        shell=True,
+                        check=True,
+                    )
+
+                if "bridge-nf-call-arptables" in kernel_br:
+                    subprocess.run(
+                        "echo "
+                        + str(kernel_br.get("bridge-nf-call-arptables"))
+                        + " > /proc/sys/net/bridge/bridge-nf-call-arptables",
+                        capture_output=True,
+                        shell=True,
+                        check=True,
+                    )
+
+                if (
+                    "br_netfilter_inactive" in kernel_br
+                    and kernel_br["br_netfilter_inactive"]
+                ):
+                    subprocess.run(
+                        "modprobe -r br_netfilter",
+                        capture_output=True,
+                        shell=True,
+                        check=True,
+                    )
+
+                os.remove(bridge_nf_state_filepath)
+
+                log.info("Kernel module 'br_netfilter' has been reset to initial state")
 
         except subprocess.CalledProcessError as e:
-            self.log.warning(
-                f"kernel network bridge module failed to reset to initial state: \n{e}"
+            raise RuntimeError(
+                f"Kernel network bridge module failed to reset to initial state: \n{e}"
             )
+        except AttributeError as e:
+            raise e
 
     def network_tap(self):
         """
         Establishes network tap over MitM interface1 and interface2.
 
         :return: None
+        :raise RuntimeError: failure constructing bridge
         """
         # Clean existing bridge from system (could be left behind after previous shutdown error)
         if (
@@ -268,11 +337,11 @@ class MitM:
                 )
 
             except subprocess.CalledProcessError as e:
-                self.log.warning(f"failure tearing down old network bridge: \n{e}")
+                raise RuntimeError(f"Failure tearing down old network bridge: \n{e}")
 
         # Create bridge on system
-        self.log.info(
-            f"constructing network tap between {self._interface1} and {self._interface2}"
+        log.info(
+            f"Constructing network tap between {self._interface1} and {self._interface2}"
         )
         try:
             subprocess.run(
@@ -313,17 +382,15 @@ class MitM:
                 shell=True,
                 check=True,
             )
-            self.log.info("Network tap successfully constructed")
+            log.info("Network tap constructed")
         except subprocess.CalledProcessError as e:
-            self.log.exception(f"failure constructing network bridge: {e}")
+            raise RuntimeError(f"Failure constructing network bridge: {e}")
 
     def arp_poison(self):
         """
-        TODO support network arp poisoning + update teardown()
-        :return: None
+        :raise NotImplementedError
         """
-        self.log.exception("unimplemented function 'arp_poison()'")
-        sys.exit(1)
+        raise NotImplementedError("unimplemented function 'arp_poison()'")
 
 
 def get_args():
@@ -349,7 +416,6 @@ def get_args():
     )
 
     parsed_args = {key: value for key, value in vars(parser.parse_args()).items()}
-    # print(parsed_args)
 
     return parsed_args
 
@@ -371,9 +437,12 @@ def command_line_infect():
     interface1 = args["i"]
     interface2 = args["b"]
 
-    MitM(interface1, interface2)
-
-    input("Press 'Enter' to stop network infection...")
+    try:
+        _ = MitM(interface1, interface2)
+        input("Press 'Enter' to stop network infection...")
+    except (PermissionError, RuntimeError) as e:
+        log.error(e)
+        return
 
 
 if __name__ == "__main__":

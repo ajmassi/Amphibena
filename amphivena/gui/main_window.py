@@ -5,8 +5,9 @@ import tkinter as tk
 from tkinter import filedialog
 from tkinter.scrolledtext import ScrolledText
 
-from amphivena import mitm
-from amphivena.gui import json_editor
+from amphivena import mitm, packet_processor
+from amphivena.gui import edit_window as ew, json_editor
+from amphivena.playbook_utils import PlaybookValidationError
 
 log = logging.getLogger(__name__)
 
@@ -45,15 +46,18 @@ class RootWindow(tk.Tk):
         self.option_add("*tearOff", False)
 
         self.config(menu=RootWindow.MenuBar(self), bg="grey2")
-        self.config_file_path = tk.StringVar(self, "<no playbook file set>")
+        self.playbook_file_path = tk.StringVar(self, "<no playbook file set>")
 
         self.main_application = MainApplication(self)
+        self.packet_processor = None
 
         self.protocol("WM_DELETE_WINDOW", self.quit)
         self.bind("<Control-q>", self.quit)
         signal.signal(signal.SIGINT, self.quit)
 
     def quit(self, *args):
+        if self.packet_processor:
+            self.packet_processor.stop()
         self.destroy()
 
     class MenuBar(tk.Menu):
@@ -73,14 +77,15 @@ class RootWindow(tk.Tk):
 
         def load_playbook(self):
             filename = filedialog.askopenfilename(
-                title="Open a Amp config file",
+                title="Open a Amp playbook file",
                 initialdir="./",
                 filetypes=[("Json", "*.json")],
             )
 
-            self.master.config_file_path.set(filename)
-
-            log.info(f"Selected playbook: {filename}")
+            # Verify a file was selected
+            if filename:
+                self.master.playbook_file_path.set(filename)
+                log.info(f"Selected playbook: {filename}")
 
 
 class MainApplication(tk.Frame):
@@ -105,34 +110,76 @@ class MainApplication(tk.Frame):
     ##################
 
     class ControlFrame(tk.Frame):
+        """
+        Contains the controls for selecting playbook, opening editor, and beginning execution.
+        """
+
         def __init__(self, parent: tk.Frame):
             tk.Frame.__init__(self, parent, height=100)
-            self.config_file_button = tk.Button(
+
+            self.mitm = None
+            self.is_playbook_running = tk.BooleanVar(value=False)
+            self.play_pause_string = tk.StringVar(value=f"{chr(0x25B6)}")
+
+            self.playbook_file_path_button = tk.Button(
                 self,
-                textvariable=self.winfo_toplevel().config_file_path,
+                textvariable=self.winfo_toplevel().playbook_file_path,
                 command=self.open_edit_window,
             )
             self.run_playbook_button = tk.Button(
-                self, text=chr(0x25B6), command=self.run_playbook
+                self, textvariable=self.play_pause_string, command=self.run_playbook
             )
 
-            self.config_file_button.pack(side=tk.LEFT, fill=tk.BOTH, expand=1, padx=10)
+            self.playbook_file_path_button.pack(
+                side=tk.LEFT, fill=tk.BOTH, expand=1, padx=10
+            )
             self.run_playbook_button.pack(side=tk.RIGHT, expand=0, padx=(0, 10))
 
         def open_edit_window(self):
-            if self.winfo_toplevel().config_file_path.get() != "<no playbook file set>":
+            if (
+                self.winfo_toplevel().playbook_file_path.get()
+                != "<no playbook file set>"
+            ):
                 editor_window = json_editor.EditorWindow(
-                    self.winfo_toplevel().config_file_path
+                    self.winfo_toplevel().playbook_file_path
                 )
-                editor_window.transient(self.winfo_toplevel())
-                editor_window.grab_set()
-                self.winfo_toplevel().wait_window(editor_window)
+                if editor_window.winfo_exists():
+                    editor_window.transient(self.winfo_toplevel())
+                    editor_window.grab_set()
+                    self.winfo_toplevel().wait_window(editor_window)
 
         def run_playbook(self):
-            mitm.MitM("eth1", "eth2")
-            pass
+            if self.is_playbook_running.get():
+                if self.winfo_toplevel().packet_processor:
+                    self.winfo_toplevel().packet_processor.stop()
+                self.mitm.teardown()
+                self.mitm = None
+                del self.mitm
+                self.play_pause_string.set(value=f"{chr(0x25B6)}")
+            else:
+                try:
+                    self.winfo_toplevel().packet_processor = (
+                        packet_processor.PacketProcessor(
+                            self.winfo_toplevel().playbook_file_path.get()
+                        )
+                    )
+                    self.mitm = mitm.MitM("eth1", "eth2")
+                    self.winfo_toplevel().packet_processor.start()
+                    self.play_pause_string.set(value=f"{chr(0x25AE)}{chr(0x25AE)}")
+                except (PermissionError, RuntimeError) as e:
+                    log.error(e)
+                    return
+                except PlaybookValidationError as e:
+                    log.error(e)
+                    return
+
+            self.is_playbook_running.set(not self.is_playbook_running.get())
 
     class ConsoleFrame(tk.Frame):
+        """
+        Display Amphivena logs in real time.
+        """
+
         def __init__(self, parent: tk.Frame):
             tk.Frame.__init__(self, parent, bg="white")
 
@@ -144,7 +191,7 @@ class MainApplication(tk.Frame):
             self.scrolled_text.tag_config("DEBUG", foreground="gray")
             self.scrolled_text.tag_config("WARNING", foreground="orange")
             self.scrolled_text.tag_config("ERROR", foreground="red")
-            self.scrolled_text.tag_config("CRITICAL", foreground="red", underline=1)
+            self.scrolled_text.tag_config("CRITICAL", foreground="red", underline=True)
             # Create a logging handler using a queue
             self.log_queue = queue.Queue()
             self.queue_handler = QueueHandler(self.log_queue)

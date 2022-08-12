@@ -1,0 +1,53 @@
+{
+  "isOrdered": true,
+  "instructions": {
+    "1": {
+      "operation": "edit",
+      "layerGroup": "IPv4 (Internet Protocol v4).",
+      "layer": "TCP",
+      "conditions": [
+        {
+          "field": "sport",
+          "comparator": "is",
+          "value": 38713
+        },
+        {
+          "field": "dport",
+          "comparator": "is",
+          "value": "443"
+        }
+      ],
+      "actions": [
+        {
+          "type": "modify",
+          "field": "sport",
+          "value": "0x3039"
+        }
+      ]
+    },
+    "2": {
+      "operation": "edit",
+      "layerGroup": "IPv4 (Internet Protocol v4).",
+      "layer": "TCP",
+      "conditions": [
+        {
+          "field": "sport",
+          "comparator": "is",
+          "value": "5555"
+        }
+      ],
+      "actions": [
+        {
+          "type": "modify",
+          "field": "<Field (TCP,TCPerror).sport>",
+          "value": "10.10.10.10"
+        },
+        {
+          "type": "insert",
+          "field": "32",
+          "value": "\\x41"
+        }
+      ]
+    }
+  }
+}
