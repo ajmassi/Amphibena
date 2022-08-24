@@ -1,9 +1,4 @@
 scapy
 netfilterqueue
-pre-commit
-isort
-black
-flake8
-pytest
 cryptography>=2.0.0
 jsonschema
