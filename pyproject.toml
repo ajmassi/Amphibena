@@ -26,5 +26,5 @@ flake8-executable = "^2.1.1"
 bandit = "^1.7.4"
 
 [build-system]
-requires = ["poetry-core>=1.1.0a6"] # Known bug as of 9/17/22
+requires = ["poetry-core>=1.0.0"] # Known bug as of 9/17/22
 build-backend = "poetry.core.masonry.api"
