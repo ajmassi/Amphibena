@@ -1,0 +1,50 @@
+name: Amphivena code quality and testing
+
+on: [push,  pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10"]
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Install APT Dependencies
+      run: |
+        sudo apt-get update && 
+        sudo apt-get install libnetfilter-queue-dev
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v3
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Set up Poetry
+      uses: abatilo/actions-poetry@v2
+      with:
+        poetry-version: '1.2'
+
+    - name: Install Python Dependencies
+      run:  poetry install
+
+    - name: Run isort
+      run: poetry run isort --check --diff --combine-as --line-length 88 --profile black .
+
+    - name: Format using black
+      run: poetry run black --check --diff --no-color --quiet --skip-magic-trailing-comma --line-length 88 .
+
+    - name: Lint with flake8
+      run: |
+        # Broad flake8 checks
+        poetry run flake8 . --count --select=B,C,E,F,W,T4,B9 --ignore=B950,E402,E203,E266,E501,W503,F403,F401 --show-source --statistics
+        # Github Recommended: exit-zero treats all errors as warnings
+        poetry run flake8 . --count --exit-zero --max-complexity=18 --max-line-length=88 --statistics
+
+    - name: Security Check with Bandit
+      run: |
+        poetry run bandit --silent --recursive .
