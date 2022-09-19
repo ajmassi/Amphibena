@@ -84,4 +84,4 @@ jobs:
           bandit --version
       - name: Security Check with Bandit
         run: |
-          bandit --silent --recursive .
+          bandit -c "pyproject.toml" --silent --recursive .
