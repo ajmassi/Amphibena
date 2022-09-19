@@ -6,7 +6,7 @@ import logging.config
 import os
 import pathlib
 import shlex
-import subprocess
+import subprocess   # nosec B404
 import sys
 
 bridge_nf_state_filepath = "/var/lib/amphivena/br_module_state.json"
@@ -53,14 +53,14 @@ class MitM:
             subprocess.run(
                 "ip address show dev " + shlex.quote(self._interface1),
                 capture_output=True,
-                shell=True,
+                shell=True,     # nosec B602
                 check=True,
             )
             if self._interface2:
                 subprocess.run(
                     "ip address show dev " + shlex.quote(self._interface2),
                     capture_output=True,
-                    shell=True,
+                    shell=True,     # nosec B602
                     check=True,
                 )
         except subprocess.CalledProcessError:
@@ -97,7 +97,7 @@ class MitM:
             subprocess.run(
                 "ip address show " + shlex.quote(self.bridge_name),
                 capture_output=True,
-                shell=True,
+                shell=True,     # nosec B602
             ).returncode
             == 0
         ):
@@ -105,13 +105,13 @@ class MitM:
                 subprocess.run(
                     "ip link set " + shlex.quote(self.bridge_name) + " down",
                     capture_output=True,
-                    shell=True,
+                    shell=True,     # nosec B602
                     check=True,
                 )
                 subprocess.run(
                     "ip link delete " + shlex.quote(self.bridge_name) + " type bridge",
                     capture_output=True,
-                    shell=True,
+                    shell=True,     # nosec B602
                     check=True,
                 )
                 subprocess.run(
@@ -119,7 +119,7 @@ class MitM:
                     + shlex.quote(self.bridge_name)
                     + " -j NFQUEUE --queue-num 1",
                     capture_output=True,
-                    shell=True,
+                    shell=True,     # nosec B602
                     check=True,
                 )
 
@@ -158,8 +158,8 @@ class MitM:
                 kernel_br = {}
 
                 if (
-                    subprocess.run(
-                        "test -d /proc/sys/net/bridge/", capture_output=True, shell=True
+                    subprocess.run(     # nosec B607
+                        "test -d /proc/sys/net/bridge/", capture_output=True, shell=True    # nosec B602
                     ).returncode
                     == 0
                 ):
@@ -168,26 +168,26 @@ class MitM:
                         "Kernel module 'br_netfilter' already up, saving current settings"
                     )
                     kernel_br["bridge-nf-call-iptables"] = int(
-                        subprocess.run(
+                        subprocess.run(     # nosec B607
                             "cat /proc/sys/net/bridge/bridge-nf-call-iptables",
                             capture_output=True,
-                            shell=True,
+                            shell=True,     # nosec B602
                             check=True,
                         ).stdout
                     )
                     kernel_br["bridge-nf-call-ip6tables"] = int(
-                        subprocess.run(
+                        subprocess.run(     # nosec B607
                             "cat /proc/sys/net/bridge/bridge-nf-call-ip6tables",
                             capture_output=True,
-                            shell=True,
+                            shell=True,     # nosec B602
                             check=True,
                         ).stdout
                     )
                     kernel_br["bridge-nf-call-arptables"] = int(
-                        subprocess.run(
+                        subprocess.run(     # nosec B607
                             "cat /proc/sys/net/bridge/bridge-nf-call-arptables",
                             capture_output=True,
-                            shell=True,
+                            shell=True,     # nosec B602
                             check=True,
                         ).stdout
                     )
@@ -198,25 +198,25 @@ class MitM:
                     json.dump(kernel_br, f, indent=4)
 
             log.debug("Configuring kernel module 'br_netfilter'")
-            subprocess.run(
-                "modprobe br_netfilter", capture_output=True, shell=True, check=True
+            subprocess.run(     # nosec B607
+                "modprobe br_netfilter", capture_output=True, shell=True, check=True    # nosec B602
             )
-            subprocess.run(
+            subprocess.run(     # nosec B607
                 "echo 1 > /proc/sys/net/bridge/bridge-nf-call-iptables",
                 capture_output=True,
-                shell=True,
+                shell=True,     # nosec B602
                 check=True,
             )
-            subprocess.run(
+            subprocess.run(     # nosec B607
                 "echo 1 > /proc/sys/net/bridge/bridge-nf-call-ip6tables",
                 capture_output=True,
-                shell=True,
+                shell=True,     # nosec B602
                 check=True,
             )
-            subprocess.run(
+            subprocess.run(     # nosec B607
                 "echo 1 > /proc/sys/net/bridge/bridge-nf-call-arptables",
                 capture_output=True,
-                shell=True,
+                shell=True,     # nosec B602
                 check=True,
             )
 
@@ -252,7 +252,7 @@ class MitM:
                         + str(kernel_br.get("bridge-nf-call-iptables"))
                         + " > /proc/sys/net/bridge/bridge-nf-call-iptables",
                         capture_output=True,
-                        shell=True,
+                        shell=True,     # nosec B602
                         check=True,
                     )
 
@@ -262,7 +262,7 @@ class MitM:
                         + str(kernel_br.get("bridge-nf-call-ip6tables"))
                         + " > /proc/sys/net/bridge/bridge-nf-call-ip6tables",
                         capture_output=True,
-                        shell=True,
+                        shell=True,     # nosec B602
                         check=True,
                     )
 
@@ -272,7 +272,7 @@ class MitM:
                         + str(kernel_br.get("bridge-nf-call-arptables"))
                         + " > /proc/sys/net/bridge/bridge-nf-call-arptables",
                         capture_output=True,
-                        shell=True,
+                        shell=True,     # nosec B602
                         check=True,
                     )
 
@@ -280,10 +280,10 @@ class MitM:
                     "br_netfilter_inactive" in kernel_br
                     and kernel_br["br_netfilter_inactive"]
                 ):
-                    subprocess.run(
+                    subprocess.run(     # nosec B607
                         "modprobe -r br_netfilter",
                         capture_output=True,
-                        shell=True,
+                        shell=True,     # nosec B602
                         check=True,
                     )
 
@@ -310,7 +310,7 @@ class MitM:
             subprocess.run(
                 "ip address show " + shlex.quote(self.bridge_name),
                 capture_output=True,
-                shell=True,
+                shell=True,     # nosec B602
             ).returncode
             == 0
         ):
@@ -318,13 +318,13 @@ class MitM:
                 subprocess.run(
                     "ip link set " + shlex.quote(self.bridge_name) + " down",
                     capture_output=True,
-                    shell=True,
+                    shell=True,     # nosec B602
                     check=True,
                 )
                 subprocess.run(
                     "ip link delete " + shlex.quote(self.bridge_name) + " type bridge",
                     capture_output=True,
-                    shell=True,
+                    shell=True,     # nosec B602
                     check=True,
                 )
                 subprocess.run(
@@ -332,7 +332,7 @@ class MitM:
                     + shlex.quote(self.bridge_name)
                     + " -j NFQUEUE --queue-num 1",
                     capture_output=True,
-                    shell=True,
+                    shell=True,     # nosec B602
                     check=True,
                 )
 
@@ -347,7 +347,7 @@ class MitM:
             subprocess.run(
                 "ip link add " + shlex.quote(self.bridge_name) + " type bridge",
                 capture_output=True,
-                shell=True,
+                shell=True,     # nosec B602
                 check=True,
             )
             subprocess.run(
@@ -356,7 +356,7 @@ class MitM:
                 + " master "
                 + shlex.quote(self.bridge_name),
                 capture_output=True,
-                shell=True,
+                shell=True,     # nosec B602
                 check=True,
             )
             subprocess.run(
@@ -365,13 +365,13 @@ class MitM:
                 + " master "
                 + shlex.quote(self.bridge_name),
                 capture_output=True,
-                shell=True,
+                shell=True,     # nosec B602
                 check=True,
             )
             subprocess.run(
                 "ip link set " + shlex.quote(self.bridge_name) + " up",
                 capture_output=True,
-                shell=True,
+                shell=True,     # nosec B602
                 check=True,
             )
             subprocess.run(
@@ -379,7 +379,7 @@ class MitM:
                 + shlex.quote(self.bridge_name)
                 + " -j NFQUEUE --queue-num 1",
                 capture_output=True,
-                shell=True,
+                shell=True,     # nosec B602
                 check=True,
             )
             log.info("Network tap constructed")
