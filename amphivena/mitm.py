@@ -203,8 +203,8 @@ class MitM:
             subprocess.run(  # nosec B607
                 "modprobe br_netfilter",
                 capture_output=True,
-                shell=True,
-                check=True,  # nosec B602
+                shell=True,  # nosec B602
+                check=True,
             )
             subprocess.run(  # nosec B607
                 "echo 1 > /proc/sys/net/bridge/bridge-nf-call-iptables",
