@@ -1,6 +1,15 @@
 [tool.pytest.ini_options]
 pythonpath = ["."]
 
+[tool.isort]
+profile = "black"
+line_length = 88
+combine_as_imports = true
+
+[tool.black]
+line-length = 88
+skip-magic-trailing-comma = true
+
 [tool.bandit]
 exclude_dirs = ["./tests/"]
 

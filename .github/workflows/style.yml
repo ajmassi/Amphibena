@@ -21,7 +21,7 @@ jobs:
           isort -V
       - name: Run isort
         run: |
-          isort --check --diff --combine-as --line-length 88 --profile black . 
+          isort --check --diff . 
 
   flake8:
     runs-on: ubuntu-latest
@@ -61,7 +61,7 @@ jobs:
           black --version
       - name: Format using black
         run: |
-          black --check --diff --no-color --quiet --skip-magic-trailing-comma --line-length 88 .
+          black --check --diff --no-color --quiet .
 
   bandit:
     runs-on: ubuntu-latest
