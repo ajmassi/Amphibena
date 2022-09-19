@@ -22,15 +22,9 @@ schema = {
                             "items": {
                                 "type": "object",
                                 "properties": {
-                                    "field": {
-                                        "type": "string",
-                                    },
-                                    "comparator": {
-                                        "type": "string",
-                                    },
-                                    "value": {
-                                        "type": ["string", "integer"],
-                                    },
+                                    "field": {"type": "string"},
+                                    "comparator": {"type": "string"},
+                                    "value": {"type": ["string", "integer"]},
                                 },
                                 "required": ["field", "comparator"],
                             },
@@ -44,12 +38,8 @@ schema = {
                                         "type": "string",
                                         "enum": ["modify", "insert"],
                                     },
-                                    "field": {
-                                        "type": "string",
-                                    },
-                                    "value": {
-                                        "type": ["string", "integer"],
-                                    },
+                                    "field": {"type": "string"},
+                                    "value": {"type": ["string", "integer"]},
                                 },
                                 "required": ["type", "field"],
                             },
