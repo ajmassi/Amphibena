@@ -153,7 +153,9 @@ class MainApplication(tk.Frame):
             )
 
             # This is the unholy first-attempt solution to executing and assigning a constructed scapy module reference
-            exec(compile("self._field_names = " + field_lookup, "", "single"))  # nosec B102
+            exec(
+                compile("self._field_names = " + field_lookup, "", "single")
+            )  # nosec B102
 
             # Clean and recreate menu elements
             self.children["menu"].delete(0, "end")
