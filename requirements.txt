@@ -1,4 +1,0 @@
-scapy
-netfilterqueue
-cryptography>=2.0.0
-jsonschema

@@ -22,15 +22,9 @@ schema = {
                             "items": {
                                 "type": "object",
                                 "properties": {
-                                    "field": {
-                                        "type": "string",
-                                    },
-                                    "comparator": {
-                                        "type": "string",
-                                    },
-                                    "value": {
-                                        "type": ["string", "integer"],
-                                    },
+                                    "field": {"type": "string"},
+                                    "comparator": {"type": "string"},
+                                    "value": {"type": ["string", "integer"]},
                                 },
                                 "required": ["field", "comparator"],
                             },
@@ -44,12 +38,8 @@ schema = {
                                         "type": "string",
                                         "enum": ["modify", "insert"],
                                     },
-                                    "field": {
-                                        "type": "string",
-                                    },
-                                    "value": {
-                                        "type": ["string", "integer"],
-                                    },
+                                    "field": {"type": "string"},
+                                    "value": {"type": ["string", "integer"]},
                                 },
                                 "required": ["type", "field"],
                             },
@@ -94,8 +84,8 @@ def load(playbook_file_path):
         log.info("Playbook validation successful.")
         return playbook_obj
     except json.decoder.JSONDecodeError as e:
-        raise PlaybookValidationError(f"Playbook json invalid: {e}")
+        raise PlaybookValidationError(f"Playbook json invalid: {e}") from e
     except jsonschema.exceptions.ValidationError as e:
-        raise PlaybookValidationError(f"Playbook schema invalid: {e.message}")
+        raise PlaybookValidationError(f"Playbook schema invalid: {e.message}") from e
     except FileNotFoundError as e:
-        raise PlaybookValidationError(f"Playbook not found: '{e.filename}'")
+        raise PlaybookValidationError(f"Playbook not found: '{e.filename}'") from e

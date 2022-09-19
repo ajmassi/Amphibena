@@ -239,7 +239,7 @@ class JsonEditor:
         self.popup_menu_actions[menu_id] = {"text": text or menu_id, "action": action}
         self.update_popup_menu()
 
-    def add_node(self, key, value, node="", tags=[]):
+    def add_node(self, key, value, node="", tags=[]):  # noqa B006
         """
         Performs a recursive traversal to populate the item tree starting from given node.
         Each item is a key-value pair. Root node is defined by node=''.
