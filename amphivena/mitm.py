@@ -63,8 +63,8 @@ class MitM:
                     shell=True,  # nosec B602
                     check=True,
                 )
-        except subprocess.CalledProcessError:
-            raise RuntimeError("Provided interface not found on local machine")
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError("Provided interface not found on local machine") from e
 
         if (
             self._interface1
@@ -128,7 +128,7 @@ class MitM:
             except subprocess.CalledProcessError as e:
                 raise RuntimeError(
                     f"Network bridge '{self.bridge_name}' teardown encountered error: \n{e}"
-                )
+                ) from e
 
         self.kernel_br_module_down()
         log.info(f"MitM {self} teardown complete")
@@ -228,7 +228,9 @@ class MitM:
             log.info("Kernel module 'br_netfilter' initialized")
 
         except subprocess.CalledProcessError as e:
-            raise RuntimeError(f"Error configuring kernel network bridge module: \n{e}")
+            raise RuntimeError(
+                f"Error configuring kernel network bridge module: \n{e}"
+            ) from e
 
     @staticmethod
     def kernel_br_module_down():
@@ -299,7 +301,7 @@ class MitM:
         except subprocess.CalledProcessError as e:
             raise RuntimeError(
                 f"Kernel network bridge module failed to reset to initial state: \n{e}"
-            )
+            ) from e
         except AttributeError as e:
             raise e
 
@@ -342,7 +344,9 @@ class MitM:
                 )
 
             except subprocess.CalledProcessError as e:
-                raise RuntimeError(f"Failure tearing down old network bridge: \n{e}")
+                raise RuntimeError(
+                    f"Failure tearing down old network bridge: \n{e}"
+                ) from e
 
         # Create bridge on system
         log.info(
@@ -389,7 +393,7 @@ class MitM:
             )
             log.info("Network tap constructed")
         except subprocess.CalledProcessError as e:
-            raise RuntimeError(f"Failure constructing network bridge: {e}")
+            raise RuntimeError(f"Failure constructing network bridge: {e}") from e
 
     def arp_poison(self):
         """

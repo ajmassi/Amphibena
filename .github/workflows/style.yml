@@ -40,11 +40,8 @@ jobs:
           pip install flake8 flake8-bugbear flake8-deprecated flake8-executable
           flake8 --version
       - name: Lint with flake8
-        run: |
-          # Broad flake8 checks
-          flake8 . --count --select=B,C,E,F,W,T4,B9 --ignore=B950,E402,E203,E266,E501,W503,F403,F401 --show-source --statistics
-          # Github Recommended: exit-zero treats all errors as warnings
-          flake8 . --count --exit-zero --max-complexity=18 --max-line-length=88 --statistics
+        run: | 
+          flake8 . --count --select=B,C,E,F,W,T4,B9 --max-complexity=18 --ignore=B950,E402,E203,E266,E501,W503,F403,F401 --show-source --statistics
 
   black:
     runs-on: ubuntu-latest
