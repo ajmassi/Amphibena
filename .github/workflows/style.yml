@@ -80,7 +80,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install Bandit
         run: |
-          pip install bandit
+          pip install bandit[toml]
           bandit --version
       - name: Security Check with Bandit
         run: |
