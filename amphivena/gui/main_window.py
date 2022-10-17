@@ -5,6 +5,8 @@ import tkinter as tk
 from tkinter import filedialog
 from tkinter.scrolledtext import ScrolledText
 
+import multiprocessing_logging
+
 from amphivena import mitm, packet_processor
 from amphivena.gui import edit_window as ew, json_editor
 from amphivena.playbook_utils import PlaybookValidationError
@@ -18,15 +20,7 @@ def initialize():
 
 
 class QueueHandler(logging.Handler):
-    """Class to send logging records to a queue
-    It can be used from different threads
-    The ConsoleUi class polls this queue to display records in a ScrolledText widget
-    """
-
-    # Example from Moshe Kaplan: https://gist.github.com/moshekaplan/c425f861de7bbf28ef06
-    # (https://stackoverflow.com/questions/13318742/python-logging-to-tkinter-text-widget) is not thread safe!
-    # See https://stackoverflow.com/questions/43909849/tkinter-python-crashes-on-new-thread-trying-to-log-on-main-thread
-
+    """Log record queue for staging logs destined for the ConsoleFrame"""
     def __init__(self, log_queue):
         super().__init__()
         self.log_queue = log_queue
@@ -163,7 +157,7 @@ class MainApplication(tk.Frame):
                             self.winfo_toplevel().playbook_file_path.get()
                         )
                     )
-                    self.mitm = mitm.MitM("eth1", "eth2")
+                    self.mitm = mitm.MitM("eth0", "eth1")
                     self.winfo_toplevel().packet_processor.start()
                     self.play_pause_string.set(value=f"{chr(0x25AE)}{chr(0x25AE)}")
                 except (PermissionError, RuntimeError) as e:
@@ -199,6 +193,7 @@ class MainApplication(tk.Frame):
             self.queue_handler.setFormatter(formatter)
             amp_log = logging.getLogger("amphivena")
             amp_log.addHandler(self.queue_handler)
+            multiprocessing_logging.install_mp_handler(amp_log)
             # Start polling messages from the queue
             self.after(100, self.poll_log_queue)
 
