@@ -21,6 +21,7 @@ def initialize():
 
 class QueueHandler(logging.Handler):
     """Log record queue for staging logs destined for the ConsoleFrame"""
+
     def __init__(self, log_queue):
         super().__init__()
         self.log_queue = log_queue
