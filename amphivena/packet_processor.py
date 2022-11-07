@@ -83,12 +83,10 @@ class PacketProcessor:
         for instruction in instr_list:
             try:
                 if instruction["operation"] == "drop":
-                    pkt.drop()
-                    # self._current_step += 1
+                    self._drop(pkt)
                     return
                 elif instruction["operation"] == "edit":
                     self._edit_packet(scapy_packet, instruction)
-                    # self._current_step += 1
                 else:
                     log.error(
                         f"Unknown packet operation '{instruction.get('operation')}'"
@@ -177,6 +175,17 @@ class PacketProcessor:
                     )
         else:
             log.error(f"No actions set for instruction:\n{instruction}")
+
+    @staticmethod
+    def _drop(pkt):
+        """
+        Mark packet to drop in NFQueue.
+        This function was created to support testing surrounding Packet.drop() because cdef functions are un-mockable
+
+        :param pkt: NetfilterQueue Packet.
+        :return: None
+        """
+        pkt.drop()
 
     @staticmethod
     def _finalize(pkt):
