@@ -132,24 +132,26 @@ class PacketProcessor:
         :param instruction: dict - playbook instruction
         :return: boolean
         """
-        layer = instruction.get("layer")
-        # Check scapy_packet for layer and conditionals we are looking for
-        if scapy_packet.haslayer(layer):
-            # If we have conditionals, we will check them against the scapy_packet
-            if conditions := instruction.get("conditions"):
-                for c in conditions:
+        # If we have conditions, we will check the scapy_packet against them
+        if conditions := instruction.get("conditions"):
+            for c in conditions:
+                layer = c.get("layer")
+                # Make sure the scapy_packet has the specified layer
+                if scapy_packet.haslayer(layer):
                     try:
-                        val = int(c.get("value"))
-                    except ValueError:
-                        val = int(c.get("value"), 16)
+                        packet_field = getattr(scapy_packet.getlayer(layer), c["field"])
+                        # TODOish An assumption is made here that we want to attempt type-sameness, but we might want a
+                        #  mode that throws caution to the wind
+                        value = type(packet_field)(c["value"])
 
-                    if not getattr(scapy_packet.getlayer(layer), c["field"]) == val:
+                        if not getattr(scapy_packet.getlayer(layer), c["field"]) == value:
+                            return False
+                    except AttributeError:
+                        log.warning(f"Packet does not contain field {c['field']}")
                         return False
-            else:
-                # If there are no conditions specified, then we are done
-                return True
-        else:
-            return False
+                else:
+                    log.warning(f"Packet does not contain layer {layer}")
+                    return False
         return True
 
     @staticmethod
@@ -161,18 +163,21 @@ class PacketProcessor:
         :param instruction: dict - playbook instruction
         """
         if actions := instruction.get("actions"):
-            for action in actions:
-                if action.get("type") == "modify":
-                    try:
-                        val = int(action.get("value"))
-                    except ValueError:
-                        val = int(action.get("value"), 16)
+            for a in actions:
+                layer = a.get("layer")
+                # Make sure the scapy_packet has the specified layer
+                if scapy_packet.haslayer(layer):
+                    if a.get("type") == "modify":
+                        packet_field = getattr(scapy_packet.getlayer(layer), a["field"])
+                        value = type(packet_field)(a["value"])
 
-                    setattr(
-                        scapy_packet.getlayer(instruction.get("layer")),
-                        action.get("field"),
-                        val,
-                    )
+                        setattr(
+                            scapy_packet.getlayer(instruction.get("layer")),
+                            a.get("field"),
+                            value,
+                        )
+                else:
+                    log.warning(f"Packet does not contain layer {layer}")
         else:
             log.error(f"No actions set for instruction:\n{instruction}")
 
