@@ -1,3 +1,4 @@
+import copy
 import logging
 import multiprocessing
 import warnings
@@ -30,9 +31,9 @@ class PacketProcessor:
         except playbook_utils.PlaybookValidationError as e:
             raise e
 
+        self._remaining_instructions = copy.deepcopy(self._playbook_data.get("instructions"))
         self._playbook_is_ordered = self._playbook_data.get("isOrdered")
-        self._current_step = 1
-        self._step_count = len(self._playbook_data.get("instructions"))
+        self._no_repeat_instructions = True # TODO make configurable
         self.proc = None
 
     def start(self):
@@ -94,32 +95,53 @@ class PacketProcessor:
             except KeyError:
                 log.error("Packet operation [drop, edit] not defined.")
 
+        # Delete fields that may need recalculation by scapy
+        for layer in scapy_packet.layers():
+            try:
+                del scapy_packet.getlayer(layer).fields["chksum"]
+            except KeyError as e:
+                pass
+
+            try:
+                del scapy_packet.getlayer(layer).fields["len"]
+            except KeyError as e:
+                pass
+
         pkt.set_payload(scapy_packet.build())
         self._finalize(pkt)
 
     def _assemble_instruction_list(self, scapy_packet):
         """
         Evaluate how many, if any, playbook instruction(s) will be executed against scapy_packet.
+        For ordered operations, can execute multiple sequential operations if they all match current packet
 
         :param scapy_packet: Scapy.Packet - parsed from NFQueue
         :return: list of instructions from playbook to be executed against scapy_packet
         """
-        instr_list = self._playbook_data.get("instructions")
-        # If instructions are to be executed in order, assign next step
+        if not self._remaining_instructions:
+            log.error("No packet operations left!")
+            return None
+
+        instr_list = []
+
         if self._playbook_is_ordered:
-            if self._current_step > self._step_count:
-                log.error("No packet operations left!")
-                return None
+            for i in sorted(self._remaining_instructions):
+                instr = self._remaining_instructions.get(i)
+                matching = self._analyze_packet(scapy_packet, instr)
+                if not matching:
+                    break
+                if self._no_repeat_instructions:
+                    self._remaining_instructions.pop(i)
+                instr_list.append(instr)
 
-            instr_list = [
-                self._playbook_data.get("instructions").get(str(self._current_step))
-            ]
-
-        # Remove instructions that do not map to current packet
-        for i in instr_list:
-            matching = self._analyze_packet(scapy_packet, i)
-            if not matching:
-                instr_list.remove(i)
+        else:
+            for i in self._remaining_instructions:
+                instr = self._remaining_instructions.get(i)
+                matching = self._analyze_packet(scapy_packet, instr)
+                if matching:
+                    if self._no_repeat_instructions:
+                        self._remaining_instructions.pop(i)
+                    instr_list.append(instr)
 
         return instr_list
 
