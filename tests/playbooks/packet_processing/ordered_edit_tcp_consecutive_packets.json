@@ -1,0 +1,55 @@
+{
+  "isOrdered": true,
+  "instructions": {
+    "1": {
+      "operation": "edit",
+      "conditions": [
+        {
+          "layer": "TCP",
+          "field": "sport",
+          "comparator": "is",
+          "value": 38713
+        },
+        {
+          "layer": "TCP",
+          "field": "dport",
+          "comparator": "is",
+          "value": "443"
+        }
+      ],
+      "actions": [
+        {
+          "layer": "TCP",
+          "type": "modify",
+          "field": "sport",
+          "value": 12345
+        }
+      ]
+    },
+    "2": {
+      "operation": "edit",
+      "conditions": [
+        {
+          "layer": "TCP",
+          "field": "sport",
+          "comparator": "is",
+          "value": "443"
+        },
+        {
+          "layer": "TCP",
+          "field": "dport",
+          "comparator": "is",
+          "value": 38713
+        }
+      ],
+      "actions": [
+        {
+          "layer": "TCP",
+          "type": "modify",
+          "field": "dport",
+          "value": "12345"
+        }
+      ]
+    }
+  }
+}

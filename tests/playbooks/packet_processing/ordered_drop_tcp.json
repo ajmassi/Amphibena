@@ -1,0 +1,22 @@
+{
+  "isOrdered": true,
+  "instructions": {
+    "1": {
+      "operation": "drop",
+      "conditions": [
+        {
+          "layer": "TCP",
+          "field": "sport",
+          "comparator": "is",
+          "value": 443
+        },
+        {
+          "layer": "TCP",
+          "field": "dport",
+          "comparator": "is",
+          "value": "38713"
+        }
+      ]
+    }
+  }
+}
