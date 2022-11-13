@@ -131,12 +131,12 @@ class PacketProcessor:
             for layer in scapy_packet.layers():
                 try:
                     del scapy_packet.getlayer(layer).fields["chksum"]
-                except KeyError as e:
+                except KeyError:
                     pass
 
                 try:
                     del scapy_packet.getlayer(layer).fields["len"]
-                except KeyError as e:
+                except KeyError:
                     pass
 
         pkt.set_payload(scapy_packet.build())
