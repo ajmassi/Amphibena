@@ -18,9 +18,34 @@ log = logging.getLogger(__name__)
 
 
 class PacketProcessor:
+    """
+    The PacketProcessor operates by retrieving network packets from an existing NFQueue and applying changes based on
+        provided playbook configuration. Execution of a PacketProcessor is contained within a separate python process.
+
+    Playbooks are defined by and validated against the schema in "playbook_utils." Default behavior is for each
+        playbook instruction to be executed against exactly one packet until all instructions have been expended,
+        see "__init__.Config Options" for additional details.
+    """
     def __init__(self, playbook_file_path):
         """
-        Initialize PacketProcessor, load playbook data and gather basic config for execution
+        Load configuration from playbook
+
+        Config Options:
+            All options are configured at the root level of the playbook.
+            * _playbook_is_ordered - required
+                True, instructions will be applied in their numbered key order as matching packets are processed
+                False, processor will try to match all available instructions against every packet
+            * _loop_when_complete [False]
+                True, _remaining_instructions will be refreshed from the playbook file once they have all been exhausted
+                    This only makes sense when _remove_spent_instructions is True, behaviour will not change when
+                    _remove_spent_instructions is False
+                False, once all instructions have been exhausted processing is effectively complete and all received
+                    packets will just be passed through
+            * _remove_spent_instructions [True]
+                True, when an instruction is matched and applied to a packet, it will be removed from the
+                    _remaining_instructions list
+                False, instructions will remain active and will be applied to any matching packets that arrive during
+                    processing
 
         :param playbook_file_path: string representation of playbook file path.
         :return: PacketProcessor
@@ -33,7 +58,8 @@ class PacketProcessor:
 
         self._remaining_instructions = copy.deepcopy(self._playbook_data.get("instructions"))
         self._playbook_is_ordered = self._playbook_data.get("isOrdered")
-        self._no_repeat_instructions = True # TODO make configurable
+        self._loop_when_complete = self._playbook_data.get("loopWhenComplete", False)
+        self._remove_spent_instructions = self._playbook_data.get("removeSpentInstructions", True)
         self.proc = None
 
     def start(self):
@@ -125,23 +151,29 @@ class PacketProcessor:
         instr_list = []
 
         if self._playbook_is_ordered:
+            # JSON does not guarantee retrieval order, sort the instructions just to be sure
             for i in sorted(self._remaining_instructions):
                 instr = self._remaining_instructions.get(i)
                 matching = self._analyze_packet(scapy_packet, instr)
+                # Multiple instructions can be executed against the same packet, break when a match is not found
                 if not matching:
                     break
-                if self._no_repeat_instructions:
+                if self._remove_spent_instructions:
                     self._remaining_instructions.pop(i)
                 instr_list.append(instr)
 
         else:
+            # Pool execution does not care about the order, skip sorting
             for i in self._remaining_instructions:
                 instr = self._remaining_instructions.get(i)
                 matching = self._analyze_packet(scapy_packet, instr)
                 if matching:
-                    if self._no_repeat_instructions:
+                    if self._remove_spent_instructions:
                         self._remaining_instructions.pop(i)
                     instr_list.append(instr)
+
+        if not self._remaining_instructions and self._loop_when_complete:
+            self._remaining_instructions = copy.deepcopy(self._playbook_data.get("instructions"))
 
         return instr_list
 
@@ -158,22 +190,29 @@ class PacketProcessor:
         if conditions := instruction.get("conditions"):
             for c in conditions:
                 layer = c.get("layer")
-                # Make sure the scapy_packet has the specified layer
                 if scapy_packet.haslayer(layer):
                     try:
                         packet_field = getattr(scapy_packet.getlayer(layer), c["field"])
                         # TODOish An assumption is made here that we want to attempt type-sameness, but we might want a
                         #  mode that throws caution to the wind
-                        value = type(packet_field)(c["value"])
+                        try:
+                            comp_value = type(packet_field)(c["value"])
+                        except ValueError as e:
+                            log.error(e)
+                            return False
 
-                        if not getattr(scapy_packet.getlayer(layer), c["field"]) == value:
+                        if packet_field != comp_value:
+                            log.debug(f"`{packet_field}` != `{comp_value}`")
                             return False
                     except AttributeError:
-                        log.warning(f"Packet does not contain field {c['field']}")
+                        log.error(f"Condition `{c}` attempted\nTarget packet does not contain field `{c['field']}`")
                         return False
                 else:
-                    log.warning(f"Packet does not contain layer {layer}")
+                    log.error(f"Instruction `{instruction}` attempted\nTarget packet does not contain layer `{layer}`")
                     return False
+        else:
+            log.debug(f"No conditions for instruction `{instruction}`")
+
         return True
 
     @staticmethod
@@ -187,21 +226,30 @@ class PacketProcessor:
         if actions := instruction.get("actions"):
             for a in actions:
                 layer = a.get("layer")
-                # Make sure the scapy_packet has the specified layer
                 if scapy_packet.haslayer(layer):
                     if a.get("type") == "modify":
-                        packet_field = getattr(scapy_packet.getlayer(layer), a["field"])
-                        value = type(packet_field)(a["value"])
+                        try:
+                            packet_field = getattr(scapy_packet.getlayer(layer), a["field"])
 
-                        setattr(
-                            scapy_packet.getlayer(instruction.get("layer")),
-                            a.get("field"),
-                            value,
-                        )
+                            try:
+                                new_value = type(packet_field)(a["value"])
+                            except ValueError as e:
+                                log.error(e)
+                                return False
+
+                            setattr(
+                                scapy_packet.getlayer(instruction.get("layer")),
+                                a.get("field"),
+                                new_value,
+                            )
+
+                        except AttributeError:
+                            log.error(f"Action `{a}` attempted\nTarget packet does not contain field `{a['field']}`")
+                            return False
                 else:
-                    log.warning(f"Packet does not contain layer {layer}")
+                    log.error(f"Instruction `{instruction}` attempted\nTarget packet does not contain layer `{layer}`")
         else:
-            log.error(f"No actions set for instruction:\n{instruction}")
+            log.warning(f"No actions set for instruction:\n{instruction}")
 
     @staticmethod
     def _drop(pkt):

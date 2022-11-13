@@ -9,6 +9,8 @@ schema = {
     "type": "object",
     "properties": {
         "isOrdered": {"type": "boolean"},
+        "loopWhenComplete": {"type": "boolean"},
+        "removeSpentInstructions": {"type": "boolean"},
         "instructions": {
             "type": "object",
             "patternProperties": {

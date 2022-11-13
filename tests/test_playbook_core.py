@@ -37,6 +37,22 @@ def test_required_fields_root(new_packet_processor):
             new_packet_processor.get("mocked.json")
 
 
+def test_optional_fields_root(new_packet_processor):
+    """Test default values for root field."""
+    playbook_assignments = """{"isOrdered":true,"loopWhenComplete":true,"removeSpentInstructions":false}"""
+    playbook_no_assignments = """{"isOrdered":true}"""
+
+    with mock.patch("builtins.open", mock.mock_open(read_data=playbook_no_assignments)):
+        packet_processor = new_packet_processor.get("mocked.json")
+        assert packet_processor._loop_when_complete is False
+        assert packet_processor._remove_spent_instructions is True
+
+    with mock.patch("builtins.open", mock.mock_open(read_data=playbook_assignments)):
+        packet_processor = new_packet_processor.get("mocked.json")
+        assert packet_processor._loop_when_complete is True
+        assert packet_processor._remove_spent_instructions is False
+
+
 def test_required_fields_instruction(new_packet_processor):
     """Playbook missing required instruction field(s)."""
     playbook_no_operation = """{"isOrdered":true,"instructions":{"1":{}}}"""
