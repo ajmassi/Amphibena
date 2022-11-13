@@ -39,7 +39,9 @@ def test_required_fields_root(new_packet_processor):
 
 def test_optional_fields_root(new_packet_processor):
     """Test default values for root field."""
-    playbook_assignments = """{"isOrdered":true,"loopWhenComplete":true,"removeSpentInstructions":false}"""
+    playbook_assignments = (
+        """{"isOrdered":true,"loopWhenComplete":true,"removeSpentInstructions":false}"""
+    )
     playbook_no_assignments = """{"isOrdered":true}"""
 
     with mock.patch("builtins.open", mock.mock_open(read_data=playbook_no_assignments)):
@@ -61,7 +63,9 @@ def test_required_fields_instruction(new_packet_processor):
         PlaybookValidationError,
         match=re.escape("Playbook schema invalid: 'operation' is a required property"),
     ):
-        with mock.patch("builtins.open", mock.mock_open(read_data=playbook_no_operation)):
+        with mock.patch(
+            "builtins.open", mock.mock_open(read_data=playbook_no_operation)
+        ):
             new_packet_processor.get("mocked.json")
 
 

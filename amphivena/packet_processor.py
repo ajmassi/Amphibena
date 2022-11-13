@@ -26,6 +26,7 @@ class PacketProcessor:
         playbook instruction to be executed against exactly one packet until all instructions have been expended,
         see "__init__.Config Options" for additional details.
     """
+
     def __init__(self, playbook_file_path):
         """
         Load configuration from playbook
@@ -56,10 +57,14 @@ class PacketProcessor:
         except playbook_utils.PlaybookValidationError as e:
             raise e
 
-        self._remaining_instructions = copy.deepcopy(self._playbook_data.get("instructions"))
+        self._remaining_instructions = copy.deepcopy(
+            self._playbook_data.get("instructions")
+        )
         self._playbook_is_ordered = self._playbook_data.get("isOrdered")
         self._loop_when_complete = self._playbook_data.get("loopWhenComplete", False)
-        self._remove_spent_instructions = self._playbook_data.get("removeSpentInstructions", True)
+        self._remove_spent_instructions = self._playbook_data.get(
+            "removeSpentInstructions", True
+        )
         self.proc = None
 
     def start(self):
@@ -174,7 +179,9 @@ class PacketProcessor:
                     instr_list.append(instr)
 
         if not self._remaining_instructions and self._loop_when_complete:
-            self._remaining_instructions = copy.deepcopy(self._playbook_data.get("instructions"))
+            self._remaining_instructions = copy.deepcopy(
+                self._playbook_data.get("instructions")
+            )
 
         return instr_list
 
@@ -206,10 +213,14 @@ class PacketProcessor:
                             log.debug(f"`{packet_field}` != `{comp_value}`")
                             return False
                     except AttributeError:
-                        log.error(f"Condition `{c}` attempted\nTarget packet does not contain field `{c['field']}`")
+                        log.error(
+                            f"Condition `{c}` attempted\nTarget packet does not contain field `{c['field']}`"
+                        )
                         return False
                 else:
-                    log.error(f"Instruction `{instruction}` attempted\nTarget packet does not contain layer `{layer}`")
+                    log.error(
+                        f"Instruction `{instruction}` attempted\nTarget packet does not contain layer `{layer}`"
+                    )
                     return False
         else:
             log.debug(f"No conditions for instruction `{instruction}`")
@@ -230,7 +241,9 @@ class PacketProcessor:
                 if scapy_packet.haslayer(layer):
                     if a.get("type") == "modify":
                         try:
-                            packet_field = getattr(scapy_packet.getlayer(layer), a["field"])
+                            packet_field = getattr(
+                                scapy_packet.getlayer(layer), a["field"]
+                            )
 
                             try:
                                 new_value = type(packet_field)(a["value"])
@@ -245,10 +258,14 @@ class PacketProcessor:
                             )
 
                         except AttributeError:
-                            log.error(f"Action `{a}` attempted\nTarget packet does not contain field `{a['field']}`")
+                            log.error(
+                                f"Action `{a}` attempted\nTarget packet does not contain field `{a['field']}`"
+                            )
                             return False
                 else:
-                    log.error(f"Instruction `{instruction}` attempted\nTarget packet does not contain layer `{layer}`")
+                    log.error(
+                        f"Instruction `{instruction}` attempted\nTarget packet does not contain layer `{layer}`"
+                    )
         else:
             log.warning(f"No actions set for instruction:\n{instruction}")
 
