@@ -121,17 +121,18 @@ class PacketProcessor:
             except KeyError:
                 log.error("Packet operation [drop, edit] not defined.")
 
-        # Delete fields that may need recalculation by scapy
-        for layer in scapy_packet.layers():
-            try:
-                del scapy_packet.getlayer(layer).fields["chksum"]
-            except KeyError as e:
-                pass
+        # Delete fields to be recalculated by scapy
+        if instr_list:
+            for layer in scapy_packet.layers():
+                try:
+                    del scapy_packet.getlayer(layer).fields["chksum"]
+                except KeyError as e:
+                    pass
 
-            try:
-                del scapy_packet.getlayer(layer).fields["len"]
-            except KeyError as e:
-                pass
+                try:
+                    del scapy_packet.getlayer(layer).fields["len"]
+                except KeyError as e:
+                    pass
 
         pkt.set_payload(scapy_packet.build())
         self._finalize(pkt)
