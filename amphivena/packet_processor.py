@@ -1,3 +1,4 @@
+import copy
 import logging
 import multiprocessing
 import warnings
@@ -17,9 +18,35 @@ log = logging.getLogger(__name__)
 
 
 class PacketProcessor:
+    """
+    The PacketProcessor operates by retrieving network packets from an existing NFQueue and applying changes based on
+        provided playbook configuration. Execution of a PacketProcessor is contained within a separate python process.
+
+    Playbooks are defined by and validated against the schema in "playbook_utils." Default behavior is for each
+        playbook instruction to be executed against exactly one packet until all instructions have been expended,
+        see "__init__.Config Options" for additional details.
+    """
+
     def __init__(self, playbook_file_path):
         """
-        Initialize PacketProcessor, load playbook data and gather basic config for execution
+        Load configuration from playbook
+
+        Config Options:
+            All options are configured at the root level of the playbook.
+            * _playbook_is_ordered - required
+                True, instructions will be applied in their numbered key order as matching packets are processed
+                False, processor will try to match all available instructions against every packet
+            * _loop_when_complete [False]
+                True, _remaining_instructions will be refreshed from the playbook file once they have all been exhausted
+                    This only makes sense when _remove_spent_instructions is True, behaviour will not change when
+                    _remove_spent_instructions is False
+                False, once all instructions have been exhausted processing is effectively complete and all received
+                    packets will just be passed through
+            * _remove_spent_instructions [True]
+                True, when an instruction is matched and applied to a packet, it will be removed from the
+                    _remaining_instructions list
+                False, instructions will remain active and will be applied to any matching packets that arrive during
+                    processing
 
         :param playbook_file_path: string representation of playbook file path.
         :return: PacketProcessor
@@ -30,9 +57,14 @@ class PacketProcessor:
         except playbook_utils.PlaybookValidationError as e:
             raise e
 
+        self._remaining_instructions = copy.deepcopy(
+            self._playbook_data.get("instructions")
+        )
         self._playbook_is_ordered = self._playbook_data.get("isOrdered")
-        self._current_step = 1
-        self._step_count = len(self._playbook_data.get("instructions"))
+        self._loop_when_complete = self._playbook_data.get("loopWhenComplete", False)
+        self._remove_spent_instructions = self._playbook_data.get(
+            "removeSpentInstructions", True
+        )
         self.proc = None
 
     def start(self):
@@ -83,12 +115,10 @@ class PacketProcessor:
         for instruction in instr_list:
             try:
                 if instruction["operation"] == "drop":
-                    pkt.drop()
-                    # self._current_step += 1
+                    self._drop(pkt)
                     return
                 elif instruction["operation"] == "edit":
                     self._edit_packet(scapy_packet, instruction)
-                    # self._current_step += 1
                 else:
                     log.error(
                         f"Unknown packet operation '{instruction.get('operation')}'"
@@ -96,32 +126,62 @@ class PacketProcessor:
             except KeyError:
                 log.error("Packet operation [drop, edit] not defined.")
 
+        # Delete fields to be recalculated by scapy
+        if instr_list:
+            for layer in scapy_packet.layers():
+                try:
+                    del scapy_packet.getlayer(layer).fields["chksum"]
+                except KeyError:
+                    pass
+
+                try:
+                    del scapy_packet.getlayer(layer).fields["len"]
+                except KeyError:
+                    pass
+
         pkt.set_payload(scapy_packet.build())
         self._finalize(pkt)
 
     def _assemble_instruction_list(self, scapy_packet):
         """
         Evaluate how many, if any, playbook instruction(s) will be executed against scapy_packet.
+        For ordered operations, can execute multiple sequential operations if they all match current packet
 
         :param scapy_packet: Scapy.Packet - parsed from NFQueue
         :return: list of instructions from playbook to be executed against scapy_packet
         """
-        instr_list = self._playbook_data.get("instructions")
-        # If instructions are to be executed in order, assign next step
+        if not self._remaining_instructions:
+            log.error("No packet operations left!")
+            return None
+
+        instr_list = []
+
         if self._playbook_is_ordered:
-            if self._current_step > self._step_count:
-                log.error("No packet operations left!")
-                return None
+            # JSON does not guarantee retrieval order, sort the instructions just to be sure
+            for i in sorted(self._remaining_instructions):
+                instr = self._remaining_instructions.get(i)
+                matching = self._analyze_packet(scapy_packet, instr)
+                # Multiple instructions can be executed against the same packet, break when a match is not found
+                if not matching:
+                    break
+                if self._remove_spent_instructions:
+                    self._remaining_instructions.pop(i)
+                instr_list.append(instr)
 
-            instr_list = [
-                self._playbook_data.get("instructions").get(str(self._current_step))
-            ]
+        else:
+            # Pool execution does not care about the order, skip sorting
+            for i in self._remaining_instructions:
+                instr = self._remaining_instructions.get(i)
+                matching = self._analyze_packet(scapy_packet, instr)
+                if matching:
+                    if self._remove_spent_instructions:
+                        self._remaining_instructions.pop(i)
+                    instr_list.append(instr)
 
-        # Remove instructions that do not map to current packet
-        for i in instr_list:
-            matching = self._analyze_packet(scapy_packet, i)
-            if not matching:
-                instr_list.remove(i)
+        if not self._remaining_instructions and self._loop_when_complete:
+            self._remaining_instructions = copy.deepcopy(
+                self._playbook_data.get("instructions")
+            )
 
         return instr_list
 
@@ -134,24 +194,37 @@ class PacketProcessor:
         :param instruction: dict - playbook instruction
         :return: boolean
         """
-        layer = instruction.get("layer")
-        # Check scapy_packet for layer and conditionals we are looking for
-        if scapy_packet.haslayer(layer):
-            # If we have conditionals, we will check them against the scapy_packet
-            if conditions := instruction.get("conditions"):
-                for c in conditions:
+        # If we have conditions, we will check the scapy_packet against them
+        if conditions := instruction.get("conditions"):
+            for c in conditions:
+                layer = c.get("layer")
+                if scapy_packet.haslayer(layer):
                     try:
-                        val = int(c.get("value"))
-                    except ValueError:
-                        val = int(c.get("value"), 16)
+                        packet_field = getattr(scapy_packet.getlayer(layer), c["field"])
+                        # TODOish An assumption is made here that we want to attempt type-sameness, but we might want a
+                        #  mode that throws caution to the wind
+                        try:
+                            comp_value = type(packet_field)(c["value"])
+                        except ValueError as e:
+                            log.error(e)
+                            return False
 
-                    if not getattr(scapy_packet.getlayer(layer), c["field"]) == val:
+                        if packet_field != comp_value:
+                            log.debug(f"`{packet_field}` != `{comp_value}`")
+                            return False
+                    except AttributeError:
+                        log.error(
+                            f"Condition `{c}` attempted\nTarget packet does not contain field `{c['field']}`"
+                        )
                         return False
-            else:
-                # If there are no conditions specified, then we are done
-                return True
+                else:
+                    log.error(
+                        f"Instruction `{instruction}` attempted\nTarget packet does not contain layer `{layer}`"
+                    )
+                    return False
         else:
-            return False
+            log.debug(f"No conditions for instruction `{instruction}`")
+
         return True
 
     @staticmethod
@@ -163,20 +236,49 @@ class PacketProcessor:
         :param instruction: dict - playbook instruction
         """
         if actions := instruction.get("actions"):
-            for action in actions:
-                if action.get("type") == "modify":
-                    try:
-                        val = int(action.get("value"))
-                    except ValueError:
-                        val = int(action.get("value"), 16)
+            for a in actions:
+                layer = a.get("layer")
+                if scapy_packet.haslayer(layer):
+                    if a.get("type") == "modify":
+                        try:
+                            packet_field = getattr(
+                                scapy_packet.getlayer(layer), a["field"]
+                            )
 
-                    setattr(
-                        scapy_packet.getlayer(instruction.get("layer")),
-                        action.get("field"),
-                        val,
+                            try:
+                                new_value = type(packet_field)(a["value"])
+                            except ValueError as e:
+                                log.error(e)
+                                return False
+
+                            setattr(
+                                scapy_packet.getlayer(instruction.get("layer")),
+                                a.get("field"),
+                                new_value,
+                            )
+
+                        except AttributeError:
+                            log.error(
+                                f"Action `{a}` attempted\nTarget packet does not contain field `{a['field']}`"
+                            )
+                            return False
+                else:
+                    log.error(
+                        f"Instruction `{instruction}` attempted\nTarget packet does not contain layer `{layer}`"
                     )
         else:
-            log.error(f"No actions set for instruction:\n{instruction}")
+            log.warning(f"No actions set for instruction:\n{instruction}")
+
+    @staticmethod
+    def _drop(pkt):
+        """
+        Mark packet to drop in NFQueue.
+        This function was created to support testing surrounding Packet.drop() because cdef functions are un-mockable
+
+        :param pkt: NetfilterQueue Packet.
+        :return: None
+        """
+        pkt.drop()
 
     @staticmethod
     def _finalize(pkt):

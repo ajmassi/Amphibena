@@ -9,24 +9,25 @@ schema = {
     "type": "object",
     "properties": {
         "isOrdered": {"type": "boolean"},
+        "loopWhenComplete": {"type": "boolean"},
+        "removeSpentInstructions": {"type": "boolean"},
         "instructions": {
             "type": "object",
             "patternProperties": {
                 "^[0-9]+$": {
                     "properties": {
                         "operation": {"type": "string", "enum": ["edit", "drop"]},
-                        "layerGroup": {"type": "string"},
-                        "layer": {"type": "string"},
                         "conditions": {
                             "type": "array",
                             "items": {
                                 "type": "object",
                                 "properties": {
+                                    "layer": {"type": "string"},
                                     "field": {"type": "string"},
                                     "comparator": {"type": "string"},
                                     "value": {"type": ["string", "integer"]},
                                 },
-                                "required": ["field", "comparator"],
+                                "required": ["layer", "field", "comparator"],
                             },
                         },
                         "actions": {
@@ -34,6 +35,7 @@ schema = {
                             "items": {
                                 "type": "object",
                                 "properties": {
+                                    "layer": {"type": "string"},
                                     "type": {
                                         "type": "string",
                                         "enum": ["modify", "insert"],
@@ -41,11 +43,11 @@ schema = {
                                     "field": {"type": "string"},
                                     "value": {"type": ["string", "integer"]},
                                 },
-                                "required": ["type", "field"],
+                                "required": ["layer", "type", "field"],
                             },
                         },
                     },
-                    "required": ["operation", "layerGroup", "layer"],
+                    "required": ["operation"],
                 }
             },
             "additionalProperties": False,
