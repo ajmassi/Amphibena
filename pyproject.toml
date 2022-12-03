@@ -26,8 +26,10 @@ python = "3.9.12" # 10/17/22 Bumped/locked down to silence teardown issue in mul
 scapy = "^2.4.5"
 NetfilterQueue = "^1.0.0"
 jsonschema = "^4.16.0"
-cryptography = "37.0.4" # Locked on 9/17/22 until scapy fixes issue from v38
+cryptography = "37.0.4" # Locked on 9/17/22 until scapy fixes issue from v38 (issue #3749)
 multiprocessing-logging = "^0.3.3"
+python-dotenv = "^0.21.0"
+tomli = "^2.0.1"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.1.3"
