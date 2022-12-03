@@ -9,7 +9,11 @@ import shlex
 import subprocess  # nosec B404
 import sys
 
-bridge_nf_state_filepath = "/var/lib/amphivena/br_module_state.json"
+from dotenv import load_dotenv
+
+load_dotenv()
+
+bridge_nf_state_filepath = os.getenv("BRIDGE_NF_STATE_FILEPATH")
 log = logging.getLogger(__name__)
 
 
