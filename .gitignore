@@ -1,5 +1,6 @@
 #JetBrains
 .idea/
 
+.venv/
+.pytest_cache
 __pycache__/
-venv/
