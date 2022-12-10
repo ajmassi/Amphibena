@@ -1,4 +1,5 @@
 import argparse
+import asyncio
 import atexit
 import json
 import logging
@@ -83,68 +84,35 @@ class MitM:
 
         atexit.register(self.teardown)
 
-        self.kernel_br_module_up()
-
-        if self._interface2:
-            self.network_tap()
-        else:
-            self.arp_poison()
-
         log.info(f"MitM created {self}")
         log.debug(f"{self} params {{{vars(self)}}}")
 
-    def teardown(self):
+    async def start(self):
+        self.kernel_br_module_up()
+
+        if self._interface2:
+            self.activate_network_tap()
+        else:
+            self.arp_poison()
+
+        log.info(f"MitM started {self}")
+
+        while True:
+            await asyncio.sleep(0.1)
+
+    async def stop(self):
+        self.deactivate_network_tap()
+        self.kernel_br_module_down()
+        log.info(f"MitM stopped {self}")
+
+    async def teardown(self):
         """
         Clean up bridge on exit and unregisters self
 
         :raise RuntimeError: bad interface configuration
         """
         atexit.unregister(self.teardown)
-
-        if (
-            subprocess.run(  # nosec B603
-                shlex.split("/bin/ip address show " + shlex.quote(self.bridge_name)),
-                capture_output=True,
-                shell=False,
-            ).returncode
-            == 0
-        ):
-            try:
-                subprocess.run(  # nosec B603
-                    shlex.split(
-                        "/bin/ip link set " + shlex.quote(self.bridge_name) + " down"
-                    ),
-                    capture_output=True,
-                    shell=False,
-                    check=True,
-                )
-                subprocess.run(  # nosec B603
-                    shlex.split(
-                        "/bin/ip link delete "
-                        + shlex.quote(self.bridge_name)
-                        + " type bridge"
-                    ),
-                    capture_output=True,
-                    shell=False,
-                    check=True,
-                )
-                subprocess.run(  # nosec B603
-                    shlex.split(
-                        "/usr/sbin/iptables -D FORWARD -i ampbr -j NFQUEUE --queue-num 1"
-                    ),
-                    capture_output=True,
-                    shell=False,
-                    check=True,
-                )
-
-                log.info(f"network bridge '{self.bridge_name}' removed")
-
-            except subprocess.CalledProcessError as e:
-                raise RuntimeError(
-                    f"Network bridge '{self.bridge_name}' teardown encountered error: \n{e}"
-                ) from e
-
-        self.kernel_br_module_down()
+        await self.stop()
         log.info(f"MitM {self} teardown complete")
 
     @staticmethod
@@ -285,7 +253,7 @@ class MitM:
         except AttributeError as e:
             raise e
 
-    def network_tap(self):
+    def activate_network_tap(self):
         """
         Establishes network tap over MitM interface1 and interface2.
 
@@ -390,6 +358,56 @@ class MitM:
             log.info("Network tap constructed")
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"Failure constructing network bridge: {e}") from e
+
+    def deactivate_network_tap(self):
+        """
+        Remove network tap over MitM interface1 and interface2.
+
+        :return: None
+        :raise RuntimeError: failure during bridge teardown
+        """
+        if (
+            subprocess.run(  # nosec B603
+                shlex.split("/bin/ip address show " + shlex.quote(self.bridge_name)),
+                capture_output=True,
+                shell=False,
+            ).returncode
+            == 0
+        ):
+            try:
+                subprocess.run(  # nosec B603
+                    shlex.split(
+                        "/bin/ip link set " + shlex.quote(self.bridge_name) + " down"
+                    ),
+                    capture_output=True,
+                    shell=False,
+                    check=True,
+                )
+                subprocess.run(  # nosec B603
+                    shlex.split(
+                        "/bin/ip link delete "
+                        + shlex.quote(self.bridge_name)
+                        + " type bridge"
+                    ),
+                    capture_output=True,
+                    shell=False,
+                    check=True,
+                )
+                subprocess.run(  # nosec B603
+                    shlex.split(
+                        "/usr/sbin/iptables -D FORWARD -i ampbr -j NFQUEUE --queue-num 1"
+                    ),
+                    capture_output=True,
+                    shell=False,
+                    check=True,
+                )
+
+                log.info(f"network bridge '{self.bridge_name}' removed")
+
+            except subprocess.CalledProcessError as e:
+                raise RuntimeError(
+                    f"Network bridge '{self.bridge_name}' teardown encountered error: \n{e}"
+                ) from e
 
     def arp_poison(self):
         """

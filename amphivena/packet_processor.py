@@ -67,7 +67,7 @@ class PacketProcessor:
         )
         self.proc = None
 
-    def start(self):
+    async def start(self):
         """
         Spin off PacketProcessor process and begin execution.
 
@@ -77,20 +77,19 @@ class PacketProcessor:
         self.proc.start()
         return self.proc
 
-    def stop(self):
+    async def stop(self):
         """
         Stop PacketProcessor process execution.
         """
-        if self.proc._closed is False:
-            self.proc.terminate()
-            self.proc.join()
-            self.proc.close()
+        # TODO review this statement:
+        #   if self.proc._closed is False:
+        self.proc.terminate()
+        self.proc.join()
+        self.proc.close()
 
     def _examine_packets(self):
         """
         Pull packets from NFQueue for processing.
-
-        :raise KeyboardInterrupt:
         """
         nfqueue = netfilterqueue.NetfilterQueue()
         nfqueue.bind(1, self._process)
@@ -99,8 +98,8 @@ class PacketProcessor:
             nfqueue.run()
         except KeyboardInterrupt:
             log.warning("Caught keyboard interrupt")
-
-        nfqueue.unbind()
+        finally:
+            nfqueue.unbind()
 
     def _process(self, pkt):
         """
