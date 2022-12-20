@@ -39,14 +39,17 @@ if __name__ == "__main__":
         required="--no-gui" in sys.argv,
         dest="playbook",
         help="directory path to playbook; only required if '--no-gui' flag is set",
+        default="<no playbook file set>"
     )
     args = parser.parse_args()
 
+    print(args)
     try:
+        # TODO this does not feel well designed, but I'm a bit tired to figure out
+        #   why + how to resolve, so figure out better way to organize functionality
         if args.no_gui:
             asyncio.run(controller.engage("eth0", "eth1", args.playbook))
         else:
-            # TODO add initial playbook passthrough on init
-            main_window.initialize()
+            main_window.initialize("eth0", "eth1", args.playbook)
     except KeyboardInterrupt:
         pass

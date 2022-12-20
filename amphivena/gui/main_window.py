@@ -7,15 +7,15 @@ from tkinter.scrolledtext import ScrolledText
 
 import multiprocessing_logging
 
-from amphivena import mitm, packet_processor
+from amphivena import controller, mitm, packet_processor
 from amphivena.gui import edit_window as ew, json_editor
 from amphivena.playbook_utils import PlaybookValidationError
 
 log = logging.getLogger(__name__)
 
 
-def initialize():
-    tk_root = RootWindow()
+def initialize(iface1, iface2, playbook):
+    tk_root = RootWindow(iface1, iface2, playbook)
     tk_root.mainloop()
 
 
@@ -31,7 +31,7 @@ class QueueHandler(logging.Handler):
 
 
 class RootWindow(tk.Tk):
-    def __init__(self):
+    def __init__(self, iface1, iface2, playbook):
         tk.Tk.__init__(self)
 
         self.title("Amphivena")
@@ -41,7 +41,9 @@ class RootWindow(tk.Tk):
         self.option_add("*tearOff", False)
 
         self.config(menu=RootWindow.MenuBar(self), bg="grey2")
-        self.playbook_file_path = tk.StringVar(self, "<no playbook file set>")
+        self.playbook_file_path = tk.StringVar(self, playbook)
+        self.iface1 = iface1
+        self.iface2 = iface2
 
         self.main_application = MainApplication(self)
         self.packet_processor = None
