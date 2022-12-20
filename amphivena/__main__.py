@@ -39,7 +39,7 @@ if __name__ == "__main__":
         required="--no-gui" in sys.argv,
         dest="playbook",
         help="directory path to playbook; only required if '--no-gui' flag is set",
-        default="<no playbook file set>"
+        default="<no playbook file set>",
     )
     args = parser.parse_args()
 

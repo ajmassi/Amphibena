@@ -5,6 +5,7 @@ from amphivena import mitm, packet_processor
 
 log = logging.getLogger(__name__)
 
+
 class Controller(object):
     """
     Coordinates start of mitm and packet processor and waits for shutdown signal.
@@ -15,7 +16,7 @@ class Controller(object):
     __packet_proc = None
 
     def __new__(cls, iface1, iface2, playbook):
-        if not hasattr(cls, 'instance'):
+        if not hasattr(cls, "instance"):
             cls.__instance = super(Controller, cls).__new__(cls)
         return cls.__instance
 
@@ -25,8 +26,8 @@ class Controller(object):
         :param iface2: Optional; Secondary network interface for network bridge/tap. Typically faces target client
         :param playbook: string representation of playbook file path.
         """
-        __mitm_br = mitm.MitM(iface1, iface2)
-        __packet_proc = packet_processor.PacketProcessor(playbook)
+        self.__mitm_br = mitm.MitM(iface1, iface2)
+        self.__packet_proc = packet_processor.PacketProcessor(playbook)
 
     @property
     def mitm_br(self):
@@ -34,7 +35,7 @@ class Controller(object):
 
     @mitm_br.setter
     def mitm_br(self, iface1, iface2):
-        __mitm_br__ = mitm.MitM(iface1, iface2)
+        self.__mitm_br = mitm.MitM(iface1, iface2)
 
     @property
     def packet_proc(self):
