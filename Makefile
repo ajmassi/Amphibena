@@ -21,4 +21,4 @@ bandit:
 	poetry run bandit -c "pyproject.toml" --recursive .
 
 test:
-	poetry run pytest
+	poetry run pytest --cov=amphivena --cov-report=html --cov-report=term
