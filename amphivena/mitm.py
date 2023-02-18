@@ -63,7 +63,12 @@ class MitM:
                 shell=False,
                 check=True,
             )
-            if self._interface2:
+
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(f"Provided interface (iface1: '{self._interface1}') not found on local machine") from e
+
+        if self._interface2:
+            try:
                 subprocess.run(  # nosec B603
                     shlex.split(
                         "/bin/ip address show dev " + shlex.quote(self._interface2)
@@ -72,8 +77,8 @@ class MitM:
                     shell=False,
                     check=True,
                 )
-        except subprocess.CalledProcessError as e:
-            raise RuntimeError("Provided interface not found on local machine") from e
+            except subprocess.CalledProcessError as e:
+                raise RuntimeError(f"Provided interface (iface2: '{self._interface2}') not found on local machine") from e
 
         if (
             self._interface1

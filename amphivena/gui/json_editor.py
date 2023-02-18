@@ -43,7 +43,7 @@ class Tags:
 class EditorWindow(tk.Toplevel):
     def __init__(self, filepath):
         tk.Toplevel.__init__(self)
-        self.title(f"Playbook Editor - {os.path.basename(filepath.get())}")
+        self.title(f"Playbook Editor - {os.path.basename(filepath)}")
         self.geometry("600x400")
         self.resizable(True, True)
 
@@ -57,7 +57,7 @@ class EditorWindow(tk.Toplevel):
 class JsonEditor:
     def __init__(self, parent, filepath, **options):
         self.parent = parent
-        self.filepath = filepath.get()
+        self.filepath = filepath
 
         self.popup_menu_actions = collections.OrderedDict()
 

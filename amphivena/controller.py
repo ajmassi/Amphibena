@@ -77,8 +77,12 @@ class Controller(object):
         if self.is_running:
             if self.__mitm_br:
                 await self.__mitm_br.teardown()
+                del self.__mitm_br
+                self.__mitm_br = None
             if self.__packet_proc:
                 await self.__packet_proc.stop()
+                del self.__packet_proc
+                self.__packet_proc = None
             self._is_running = False
         else:
             log.error("halt() called while Controller not running")
