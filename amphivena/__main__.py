@@ -44,12 +44,11 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     print(args)
-    try:
-        # TODO this does not feel well designed, but I'm a bit tired to figure out
-        #   why + how to resolve, so figure out better way to organize functionality
-        if args.no_gui:
-            asyncio.run(controller.engage("eth0", "eth1", args.playbook))
-        else:
-            main_window.initialize("eth0", "eth1", args.playbook)
-    except KeyboardInterrupt:
-        pass
+    if args.no_gui:
+        c = controller.Controller("eth0", "eth1", args.playbook)
+        try:
+            asyncio.run(c._engage())
+        except KeyboardInterrupt:
+            pass
+    else:
+        main_window.initialize("eth0", "eth1", args.playbook)

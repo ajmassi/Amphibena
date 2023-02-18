@@ -7,9 +7,8 @@ from tkinter.scrolledtext import ScrolledText
 
 import multiprocessing_logging
 
-from amphivena import controller, mitm, packet_processor
-from amphivena.gui import edit_window as ew, json_editor
-from amphivena.playbook_utils import PlaybookValidationError
+from amphivena import controller
+from amphivena.gui import json_editor
 
 log = logging.getLogger(__name__)
 
@@ -40,28 +39,35 @@ class RootWindow(tk.Tk):
         self.resizable(True, True)
         self.option_add("*tearOff", False)
 
-        self.config(menu=RootWindow.MenuBar(self), bg="grey2")
-        self.playbook_file_path = tk.StringVar(self, playbook)
-        self.iface1 = iface1
-        self.iface2 = iface2
+        self.cntlr = controller.Controller(iface1, iface2, playbook)
+        # Duplication of var, but doesnt make sense for Controller to store tk vars, especially when running without GUI
+        self.gui_config = {
+            "playbook_file_path": tk.StringVar(
+                None, self.cntlr.config.get("playbook_file_path")
+            )
+        }
 
-        self.main_application = MainApplication(self)
-        self.packet_processor = None
+        self.config(
+            menu=RootWindow.MenuBar(self, self.cntlr, self.gui_config), bg="grey2"
+        )
+        self.main_application = MainApplication(self, self.cntlr, self.gui_config)
 
         self.protocol("WM_DELETE_WINDOW", self.quit)
         self.bind("<Control-q>", self.quit)
         signal.signal(signal.SIGINT, self.quit)
 
     def quit(self, *args):
-        if self.packet_processor:
-            self.packet_processor.stop()
+        if self.cntlr.is_running:
+            self.cntlr.halt()
         self.destroy()
 
     class MenuBar(tk.Menu):
-        def __init__(self, parent):
+        def __init__(self, parent, cntlr, gui_config):
             tk.Menu.__init__(self, parent)
 
             self.winfo_parent()
+            self.cntlr = cntlr
+            self.gui_config = gui_config
             self.add_cascade(label="File", menu=self.file_menu())
 
         def file_menu(self):
@@ -81,18 +87,19 @@ class RootWindow(tk.Tk):
 
             # Verify a file was selected
             if filename:
-                self.master.playbook_file_path.set(filename)
+                self.gui_config.get("playbook_file_path").set(filename)
+                self.cntlr.config.update({"playbook_file_path": filename})
                 log.info(f"Selected playbook: {filename}")
 
 
 class MainApplication(tk.Frame):
     """Main Container"""
 
-    def __init__(self, parent):
+    def __init__(self, parent, cntlr, gui_config):
         tk.Frame.__init__(self, parent)
         self.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        self.controls = self.ControlFrame(self)
+        self.controls = self.ControlFrame(self, cntlr, gui_config)
         self.console = self.ConsoleFrame(self)
 
         self.controls.pack(
@@ -111,66 +118,53 @@ class MainApplication(tk.Frame):
         Contains the controls for selecting playbook, opening editor, and beginning execution.
         """
 
-        def __init__(self, parent: tk.Frame):
+        def __init__(self, parent: tk.Frame, cntlr, gui_config):
             tk.Frame.__init__(self, parent, height=100)
 
-            self.mitm = None
+            self.cntlr = cntlr
+            self.gui_config = gui_config
             self.is_playbook_running = tk.BooleanVar(value=False)
             self.play_pause_string = tk.StringVar(value=f"{chr(0x25B6)}")
 
             self.playbook_file_path_button = tk.Button(
                 self,
-                textvariable=self.winfo_toplevel().playbook_file_path,
+                textvariable=self.gui_config.get("playbook_file_path"),
                 command=self.open_edit_window,
             )
+
             self.run_playbook_button = tk.Button(
-                self, textvariable=self.play_pause_string, command=self.run_playbook
+                self,
+                textvariable=self.play_pause_string,
+                command=self.controller_toggle,
             )
+            self.update_play_button()
 
             self.playbook_file_path_button.pack(
                 side=tk.LEFT, fill=tk.BOTH, expand=1, padx=10
             )
             self.run_playbook_button.pack(side=tk.RIGHT, expand=0, padx=(0, 10))
 
+        def update_play_button(self):
+            # Update play/pause button icon on regular interval
+            # This is an easy way to work around there being no easy way to pass information from the controller thread
+            if self.cntlr.is_running:
+                self.play_pause_string.set(value=f"{chr(0x25AE)}{chr(0x25AE)}")
+            else:
+                self.play_pause_string.set(value=f"{chr(0x25B6)}")
+            self.after(500, self.update_play_button)
+
         def open_edit_window(self):
-            if (
-                self.winfo_toplevel().playbook_file_path.get()
-                != "<no playbook file set>"
-            ):
+            if self.cntlr.config.get("playbook_file_path") != "<no playbook file set>":
                 editor_window = json_editor.EditorWindow(
-                    self.winfo_toplevel().playbook_file_path
+                    self.cntlr.config.get("playbook_file_path")
                 )
                 if editor_window.winfo_exists():
                     editor_window.transient(self.winfo_toplevel())
                     editor_window.grab_set()
                     self.winfo_toplevel().wait_window(editor_window)
 
-        def run_playbook(self):
-            if self.is_playbook_running.get():
-                if self.winfo_toplevel().packet_processor:
-                    self.winfo_toplevel().packet_processor.stop()
-                self.mitm.teardown()
-                self.mitm = None
-                del self.mitm
-                self.play_pause_string.set(value=f"{chr(0x25B6)}")
-            else:
-                try:
-                    self.winfo_toplevel().packet_processor = (
-                        packet_processor.PacketProcessor(
-                            self.winfo_toplevel().playbook_file_path.get()
-                        )
-                    )
-                    self.mitm = mitm.MitM("eth0", "eth1")
-                    self.winfo_toplevel().packet_processor.start()
-                    self.play_pause_string.set(value=f"{chr(0x25AE)}{chr(0x25AE)}")
-                except (PermissionError, RuntimeError) as e:
-                    log.error(e)
-                    return
-                except PlaybookValidationError as e:
-                    log.error(e)
-                    return
-
-            self.is_playbook_running.set(not self.is_playbook_running.get())
+        def controller_toggle(self):
+            self.cntlr.onoff_toggle()
 
     class ConsoleFrame(tk.Frame):
         """

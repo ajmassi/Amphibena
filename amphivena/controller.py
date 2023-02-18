@@ -1,7 +1,10 @@
 import asyncio
 import logging
+import threading
+from asyncio.exceptions import CancelledError
 
 from amphivena import mitm, packet_processor
+from amphivena.playbook_utils import PlaybookValidationError
 
 log = logging.getLogger(__name__)
 
@@ -11,45 +14,71 @@ class Controller(object):
     Coordinates start of mitm and packet processor and waits for shutdown signal.
     """
 
-    __instance = None
-    __mitm_br = None
-    __packet_proc = None
-
-    def __new__(cls, iface1, iface2, playbook):
-        if not hasattr(cls, "instance"):
-            cls.__instance = super(Controller, cls).__new__(cls)
-        return cls.__instance
-
     def __init__(self, iface1, iface2, playbook):
         """
         :param iface1: Primary network interface for MitM. Typically faces a network or server.
         :param iface2: Optional; Secondary network interface for network bridge/tap. Typically faces target client
         :param playbook: string representation of playbook file path.
         """
-        self.__mitm_br = mitm.MitM(iface1, iface2)
-        self.__packet_proc = packet_processor.PacketProcessor(playbook)
+        self.__mitm_br = None
+        self.__packet_proc = None
+        self.__task = None
+
+        self._async_loop = asyncio.get_event_loop()
+        self._is_running = False
+
+        self.config = {
+            "iface1": iface1,
+            "iface2": iface2,
+            "playbook_file_path": playbook,
+        }
 
     @property
-    def mitm_br(self):
-        return self.__mitm_br
+    def is_running(self):
+        return self._is_running
 
-    @mitm_br.setter
-    def mitm_br(self, iface1, iface2):
-        self.__mitm_br = mitm.MitM(iface1, iface2)
+    def halt(self):
+        if self.is_running:
+            self.__task.cancel()
 
-    @property
-    def packet_proc(self):
-        return self.__packet_proc
+    def onoff_toggle(self):
+        threading.Thread(target=self._asyncio_thread).start()
 
-    async def engage(self):
-        try:
-            log.info("Starting mitm and packet processor.")
-            await asyncio.gather(self.__mitm_br.start(), self.packet_proc.start())
-        except KeyboardInterrupt:
-            pass
-        finally:
-            await self.disengage()
+    def _asyncio_thread(self):
+        if self.is_running:
+            self.__task.cancel()
+        else:
+            self.__task = self._async_loop.create_task(self._engage())
+            self._async_loop.run_until_complete(self.__task)
 
-    async def disengage(self):
-        await self.mitm_br.teardown()
-        await self.packet_proc.stop()
+    async def _engage(self):
+        if self.is_running:
+            log.error("engage() called while Controller already running")
+        else:
+            try:
+                self._is_running = True
+                self.__mitm_br = mitm.MitM(
+                    self.config.get("iface1"), self.config.get("iface2")
+                )
+                self.__packet_proc = packet_processor.PacketProcessor(
+                    self.config.get("playbook_file_path")
+                )
+
+                log.info("Starting mitm and packet processor")
+                await asyncio.gather(self.__mitm_br.start(), self.__packet_proc.start())
+            except (KeyboardInterrupt, CancelledError):
+                pass
+            except (PermissionError, RuntimeError, PlaybookValidationError) as e:
+                log.error(e)
+            finally:
+                await self._halt()
+
+    async def _halt(self):
+        if self.is_running:
+            if self.__mitm_br:
+                await self.__mitm_br.teardown()
+            if self.__packet_proc:
+                await self.__packet_proc.stop()
+            self._is_running = False
+        else:
+            log.error("halt() called while Controller not running")
