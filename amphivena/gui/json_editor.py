@@ -62,7 +62,6 @@ class JsonEditor:
         self.popup_menu_actions = collections.OrderedDict()
 
         if not options.get("readonly"):
-
             self.popup_menu_actions["add_child_dict"] = {
                 "text": "Add Dict",
                 "action": lambda: self.add_item_from_input(ValueTypes.DICT),
@@ -274,7 +273,6 @@ class JsonEditor:
         parent = self.get_selected_index()
 
         if self.verify_selection(Tags.DICT):
-
             key = sd.askstring("Input", "key = ").strip()
 
             if not key:
@@ -295,7 +293,6 @@ class JsonEditor:
                 self.add_node(key, value, parent)
 
         elif self.verify_selection(Tags.LIST):
-
             value = None
 
             if vtype == ValueTypes.STR:
