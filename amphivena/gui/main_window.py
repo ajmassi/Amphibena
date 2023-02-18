@@ -82,7 +82,12 @@ class RootWindow(tk.Tk):
 
         def mitm_menu(self):
             def edit_iface(iface):
-                dialog = simpledialog.askstring(title="Edit Interface", prompt="Interface name (ex. 'eth0'):", initialvalue=self.cntlr.config.get(iface), parent=self.parent)
+                dialog = simpledialog.askstring(
+                    title="Edit Interface",
+                    prompt="Interface name (ex. 'eth0'):",
+                    initialvalue=self.cntlr.config.get(iface),
+                    parent=self.parent,
+                )
                 if dialog == "":
                     self.cntlr.config.update({iface: None})
                 elif dialog:
@@ -90,8 +95,8 @@ class RootWindow(tk.Tk):
                 return
 
             mitmmenu = tk.Menu(self, tearoff=0)
-            mitmmenu.add_command(label="iface1", command=lambda: edit_iface('iface1'))
-            mitmmenu.add_command(label="iface2", command=lambda: edit_iface('iface2'))
+            mitmmenu.add_command(label="iface1", command=lambda: edit_iface("iface1"))
+            mitmmenu.add_command(label="iface2", command=lambda: edit_iface("iface2"))
             return mitmmenu
 
         def load_playbook(self):

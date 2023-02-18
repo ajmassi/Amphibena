@@ -68,7 +68,12 @@ class Controller(object):
                 await asyncio.gather(self.__mitm_br.start(), self.__packet_proc.start())
             except (KeyboardInterrupt, CancelledError):
                 pass
-            except (PermissionError, RuntimeError, AttributeError, PlaybookValidationError) as e:
+            except (
+                PermissionError,
+                RuntimeError,
+                AttributeError,
+                PlaybookValidationError,
+            ) as e:
                 log.error(e)
             finally:
                 await self._halt()

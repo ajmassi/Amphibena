@@ -4,8 +4,7 @@ import json
 import logging.config
 import pathlib
 import sys
-
-import tomli
+import tomllib
 
 from amphivena import controller
 from amphivena.gui import main_window
@@ -21,8 +20,8 @@ if __name__ == "__main__":
     # Parse pyproject for application metadata
     with open(config_directory.parent.joinpath("pyproject.toml"), "rb") as pyproject:
         try:
-            data = tomli.load(pyproject)
-        except tomli.TOMLDecodeError as e:
+            data = tomllib.load(pyproject)
+        except tomllib.TOMLDecodeError as e:
             raise e
 
     parser = argparse.ArgumentParser(
@@ -37,10 +36,17 @@ if __name__ == "__main__":
         help="start execution without the gui",
     )
     parser.add_argument(
+        "--playbook",
+        required="--no-gui" in sys.argv,
+        dest="playbook",
+        help="directory path to playbook; required if '--no-gui' flag set",
+        default="<no playbook file set>",
+    )
+    parser.add_argument(
         "-i",
         required="--no-gui" in sys.argv,
         dest="iface1",
-        help="primary network interface for MitM; required if '--no-gui' flag set",
+        help="primary network interface for MitM, default 'eth0'; required if '--no-gui' flag set",
         default="eth0",
     )
     parser.add_argument(
@@ -48,13 +54,6 @@ if __name__ == "__main__":
         required=False,
         dest="iface2",
         help="secondary network interface for network bridge/tap. Typically faces target client.",
-    )
-    parser.add_argument(
-        "--playbook",
-        required="--no-gui" in sys.argv,
-        dest="playbook",
-        help="directory path to playbook; required if '--no-gui' flag set",
-        default="<no playbook file set>",
     )
     args = parser.parse_args()
 

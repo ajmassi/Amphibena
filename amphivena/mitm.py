@@ -65,7 +65,9 @@ class MitM:
             )
 
         except subprocess.CalledProcessError as e:
-            raise RuntimeError(f"Provided interface (iface1: '{self._interface1}') not found on local machine") from e
+            raise RuntimeError(
+                f"Provided interface (iface1: '{self._interface1}') not found on local machine"
+            ) from e
 
         if self._interface2:
             try:
@@ -78,7 +80,9 @@ class MitM:
                     check=True,
                 )
             except subprocess.CalledProcessError as e:
-                raise RuntimeError(f"Provided interface (iface2: '{self._interface2}') not found on local machine") from e
+                raise RuntimeError(
+                    f"Provided interface (iface2: '{self._interface2}') not found on local machine"
+                ) from e
 
         if (
             self._interface1

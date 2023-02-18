@@ -25,14 +25,13 @@ readme = "README.md"
 license = "AGPL-3"
 
 [tool.poetry.dependencies]
-python = "3.9.12" # 10/17/22 Bumped/locked down to silence teardown issue in multiprocessing_logging (issue #56)
+python = "^3.11"
 scapy = "^2.4.5"
 NetfilterQueue = "^1.0.0"
 jsonschema = "^4.16.0"
 cryptography = "^39.0.1"
 multiprocessing-logging = "^0.3.3"
 python-dotenv = "^0.21.0"
-tomli = "^2.0.1"
 pytest-cov = "^4.0.0"
 
 [tool.poetry.group.dev.dependencies]
