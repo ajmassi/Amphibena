@@ -15,6 +15,8 @@ config_directory = pathlib.Path(__file__).parent.absolute()
 with open(config_directory.joinpath("logger.conf")) as logger_conf:
     logging.config.dictConfig(json.load(logger_conf))
 
+log = logging.getLogger(__name__)
+
 if __name__ == "__main__":
     # Parse pyproject for application metadata
     with open(config_directory.parent.joinpath("pyproject.toml"), "rb") as pyproject:
@@ -35,20 +37,33 @@ if __name__ == "__main__":
         help="start execution without the gui",
     )
     parser.add_argument(
+        "-i",
+        required="--no-gui" in sys.argv,
+        dest="iface1",
+        help="primary network interface for MitM; required if '--no-gui' flag set",
+        default="eth0",
+    )
+    parser.add_argument(
+        "-b",
+        required=False,
+        dest="iface2",
+        help="secondary network interface for network bridge/tap. Typically faces target client.",
+    )
+    parser.add_argument(
         "--playbook",
         required="--no-gui" in sys.argv,
         dest="playbook",
-        help="directory path to playbook; only required if '--no-gui' flag is set",
+        help="directory path to playbook; required if '--no-gui' flag set",
         default="<no playbook file set>",
     )
     args = parser.parse_args()
 
-    print(args)
-    if args.no_gui:
-        c = controller.Controller("eth0", "eth1", args.playbook)
-        try:
+    log.debug(args)
+    try:
+        if args.no_gui:
+            c = controller.Controller(args.iface1, args.iface2, args.playbook)
             asyncio.run(c._engage())
-        except KeyboardInterrupt:
-            pass
-    else:
-        main_window.initialize("eth0", "eth1", args.playbook)
+        else:
+            main_window.initialize(args.iface1, args.iface2, args.playbook)
+    except KeyboardInterrupt:
+        pass
