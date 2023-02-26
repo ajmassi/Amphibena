@@ -43,7 +43,7 @@ class Tags:
 class EditorWindow(tk.Toplevel):
     def __init__(self, filepath):
         tk.Toplevel.__init__(self)
-        self.title(f"Playbook Editor - {os.path.basename(filepath.get())}")
+        self.title(f"Playbook Editor - {os.path.basename(filepath)}")
         self.geometry("600x400")
         self.resizable(True, True)
 
@@ -57,12 +57,11 @@ class EditorWindow(tk.Toplevel):
 class JsonEditor:
     def __init__(self, parent, filepath, **options):
         self.parent = parent
-        self.filepath = filepath.get()
+        self.filepath = filepath
 
         self.popup_menu_actions = collections.OrderedDict()
 
         if not options.get("readonly"):
-
             self.popup_menu_actions["add_child_dict"] = {
                 "text": "Add Dict",
                 "action": lambda: self.add_item_from_input(ValueTypes.DICT),
@@ -274,7 +273,6 @@ class JsonEditor:
         parent = self.get_selected_index()
 
         if self.verify_selection(Tags.DICT):
-
             key = sd.askstring("Input", "key = ").strip()
 
             if not key:
@@ -295,7 +293,6 @@ class JsonEditor:
                 self.add_node(key, value, parent)
 
         elif self.verify_selection(Tags.LIST):
-
             value = None
 
             if vtype == ValueTypes.STR:

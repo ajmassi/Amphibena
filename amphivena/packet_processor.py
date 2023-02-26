@@ -67,7 +67,7 @@ class PacketProcessor:
         )
         self.proc = None
 
-    def start(self):
+    async def start(self):
         """
         Spin off PacketProcessor process and begin execution.
 
@@ -77,20 +77,19 @@ class PacketProcessor:
         self.proc.start()
         return self.proc
 
-    def stop(self):
+    async def stop(self):
         """
         Stop PacketProcessor process execution.
         """
-        if self.proc._closed is False:
-            self.proc.terminate()
-            self.proc.join()
-            self.proc.close()
+        # TODO review this statement:
+        #   if self.proc._closed is False:
+        self.proc.terminate()
+        self.proc.join()
+        self.proc.close()
 
     def _examine_packets(self):
         """
         Pull packets from NFQueue for processing.
-
-        :raise KeyboardInterrupt:
         """
         nfqueue = netfilterqueue.NetfilterQueue()
         nfqueue.bind(1, self._process)
@@ -99,8 +98,8 @@ class PacketProcessor:
             nfqueue.run()
         except KeyboardInterrupt:
             log.warning("Caught keyboard interrupt")
-
-        nfqueue.unbind()
+        finally:
+            nfqueue.unbind()
 
     def _process(self, pkt):
         """
@@ -126,7 +125,7 @@ class PacketProcessor:
             except KeyError:
                 log.error("Packet operation [drop, edit] not defined.")
 
-        # Delete fields to be recalculated by scapy
+        # Delete fields that will be recalculated by scapy
         if instr_list:
             for layer in scapy_packet.layers():
                 try:
@@ -157,7 +156,6 @@ class PacketProcessor:
         instr_list = []
 
         if self._playbook_is_ordered:
-            # JSON does not guarantee retrieval order, sort the instructions just to be sure
             for i in sorted(self._remaining_instructions):
                 instr = self._remaining_instructions.get(i)
                 matching = self._analyze_packet(scapy_packet, instr)
@@ -194,7 +192,6 @@ class PacketProcessor:
         :param instruction: dict - playbook instruction
         :return: boolean
         """
-        # If we have conditions, we will check the scapy_packet against them
         if conditions := instruction.get("conditions"):
             for c in conditions:
                 layer = c.get("layer")

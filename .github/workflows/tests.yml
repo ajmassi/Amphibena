@@ -8,7 +8,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [ "3.9.12" ]
+        python-version: [ "3.11.2" ]
     steps:
     - uses: actions/checkout@v3
     - name: Install APT Dependencies
@@ -22,7 +22,7 @@ jobs:
     - name: Set up Poetry
       uses: abatilo/actions-poetry@v2
       with:
-        poetry-version: '1.2'
+        poetry-version: '1.2.2'
     - name: Install Python Dependencies
       run:  poetry install
     - name: Run Pytest

@@ -57,7 +57,7 @@ The following are quick steps to get Amphivena running.
 
 ### Prerequisites
 ```
-Python >= 3.9.12
+Python >= 3.11
 Poetry >= 1.2
 ```
 

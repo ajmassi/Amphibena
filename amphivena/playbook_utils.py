@@ -58,11 +58,7 @@ schema = {
 
 
 class PlaybookValidationError(Exception):
-    """
-    Catch-all for errors that can occur during validation of playbook.
-
-    :return: PlaybookValidationError
-    """
+    """Base class for exceptions raised during validation of a playbook."""
 
     def __init__(self, message):
         self.message = message
@@ -75,7 +71,7 @@ def load(playbook_file_path):
 
     :param playbook_file_path: string representation of playbook file path.
     :return: dict
-    :raise PlaybookValidationError: Can expect JSONDecodeError, ValidationError, and FileNotFoundError.
+    :raise PlaybookValidationError: Wraps JSONDecodeError, ValidationError, and FileNotFoundError.
     """
     try:
         with open(playbook_file_path, "r") as f:
