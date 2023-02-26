@@ -1,4 +1,3 @@
-import functools
 import logging
 import queue
 import signal
@@ -44,7 +43,7 @@ class RootWindow(tk.Tk):
         # Duplication of var, but doesnt make sense for Controller to store tk vars, especially when running without GUI
         self.gui_config = {
             "playbook_file_path": tk.StringVar(
-                None, self.cntlr.config.get("playbook_file_path")
+                None, self.cntlr.playbook_file_path
             )
         }
 
@@ -85,13 +84,13 @@ class RootWindow(tk.Tk):
                 dialog = simpledialog.askstring(
                     title="Edit Interface",
                     prompt="Interface name (ex. 'eth0'):",
-                    initialvalue=self.cntlr.config.get(iface),
+                    initialvalue=getattr(self.cntlr, iface),
                     parent=self.parent,
                 )
                 if dialog == "":
-                    self.cntlr.config.update({iface: None})
+                    setattr(self.cntlr, iface, None)
                 elif dialog:
-                    self.cntlr.config.update({iface: dialog})
+                    setattr(self.cntlr, iface, dialog)
                 return
 
             mitmmenu = tk.Menu(self, tearoff=0)
@@ -106,10 +105,9 @@ class RootWindow(tk.Tk):
                 filetypes=[("Json", "*.json")],
             )
 
-            # Verify a file was selected
             if filename:
                 self.gui_config.get("playbook_file_path").set(filename)
-                self.cntlr.config.update({"playbook_file_path": filename})
+                self.cntlr.playbook_file_path = filename
                 log.info(f"Selected playbook: {filename}")
 
 
@@ -156,7 +154,7 @@ class MainApplication(tk.Frame):
             self.run_playbook_button = tk.Button(
                 self,
                 textvariable=self.play_pause_string,
-                command=self.controller_toggle,
+                command=self.cntlr.toggle_running,
             )
             self.update_play_button()
 
@@ -175,17 +173,14 @@ class MainApplication(tk.Frame):
             self.after(500, self.update_play_button)
 
         def open_edit_window(self):
-            if self.cntlr.config.get("playbook_file_path") != "<no playbook file set>":
+            if self.cntlr.playbook_file_path != "<no playbook file set>":
                 editor_window = json_editor.EditorWindow(
-                    self.cntlr.config.get("playbook_file_path")
+                    self.cntlr.playbook_file_path
                 )
                 if editor_window.winfo_exists():
                     editor_window.transient(self.winfo_toplevel())
                     editor_window.grab_set()
                     self.winfo_toplevel().wait_window(editor_window)
-
-        def controller_toggle(self):
-            self.cntlr.onoff_toggle()
 
     class ConsoleFrame(tk.Frame):
         """

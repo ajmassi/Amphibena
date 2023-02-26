@@ -125,7 +125,7 @@ class PacketProcessor:
             except KeyError:
                 log.error("Packet operation [drop, edit] not defined.")
 
-        # Delete fields to be recalculated by scapy
+        # Delete fields that will be recalculated by scapy
         if instr_list:
             for layer in scapy_packet.layers():
                 try:
@@ -156,7 +156,6 @@ class PacketProcessor:
         instr_list = []
 
         if self._playbook_is_ordered:
-            # JSON does not guarantee retrieval order, sort the instructions just to be sure
             for i in sorted(self._remaining_instructions):
                 instr = self._remaining_instructions.get(i)
                 matching = self._analyze_packet(scapy_packet, instr)
@@ -193,7 +192,6 @@ class PacketProcessor:
         :param instruction: dict - playbook instruction
         :return: boolean
         """
-        # If we have conditions, we will check the scapy_packet against them
         if conditions := instruction.get("conditions"):
             for c in conditions:
                 layer = c.get("layer")

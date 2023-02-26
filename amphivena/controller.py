@@ -4,6 +4,7 @@ import threading
 from asyncio.exceptions import CancelledError
 
 from amphivena import mitm, packet_processor
+from amphivena.mitm import MitmError, MitmInterfaceError
 from amphivena.playbook_utils import PlaybookValidationError
 
 log = logging.getLogger(__name__)
@@ -11,7 +12,7 @@ log = logging.getLogger(__name__)
 
 class Controller(object):
     """
-    Coordinates start of mitm and packet processor and waits for shutdown signal.
+    Coordinates MitM and PacketProcessor startup/shutdown.
     """
 
     def __init__(self, iface1, iface2, playbook):
@@ -27,41 +28,43 @@ class Controller(object):
         self._async_loop = asyncio.get_event_loop()
         self._is_running = False
 
-        self.config = {
-            "iface1": iface1,
-            "iface2": iface2,
-            "playbook_file_path": playbook,
-        }
+        self.iface1 = iface1
+        self.iface2 = iface2
+        self.playbook_file_path = playbook
 
     @property
     def is_running(self):
         return self._is_running
 
     def halt(self):
+        """Stop MitM and Packet Processor."""
         if self.is_running:
             self.__task.cancel()
 
-    def onoff_toggle(self):
-        threading.Thread(target=self._asyncio_thread).start()
+    def toggle_running(self):
+        """Will transition the system between running and stopped states."""
+        threading.Thread(target=self.__asyncio_thread).start()
 
-    def _asyncio_thread(self):
+    def __asyncio_thread(self):
+        """To be used in thread by toggle_running() to switch system state."""
         if self.is_running:
             self.__task.cancel()
         else:
-            self.__task = self._async_loop.create_task(self._engage())
+            self.__task = self._async_loop.create_task(self.start())
             self._async_loop.run_until_complete(self.__task)
 
-    async def _engage(self):
+    async def start(self):
+        """Start MitM and Packet Processor operations."""
         if self.is_running:
-            log.error("engage() called while Controller already running")
+            log.error("start() called while Controller already running")
         else:
             try:
                 self._is_running = True
                 self.__mitm_br = mitm.MitM(
-                    self.config.get("iface1"), self.config.get("iface2")
+                    self.iface1, self.iface2
                 )
                 self.__packet_proc = packet_processor.PacketProcessor(
-                    self.config.get("playbook_file_path")
+                    self.playbook_file_path
                 )
 
                 log.info("Starting mitm and packet processor")
@@ -70,18 +73,19 @@ class Controller(object):
                 pass
             except (
                 PermissionError,
-                RuntimeError,
-                AttributeError,
                 PlaybookValidationError,
+                MitmError,
+                MitmInterfaceError,
             ) as e:
                 log.error(e)
             finally:
-                await self._halt()
+                await self.stop()
 
-    async def _halt(self):
+    async def stop(self):
+        """Stop MitM and Packet Processor operations and clean up objects."""
         if self.is_running:
             if self.__mitm_br:
-                await self.__mitm_br.teardown()
+                await self.__mitm_br.stop()
                 del self.__mitm_br
                 self.__mitm_br = None
             if self.__packet_proc:
@@ -90,4 +94,4 @@ class Controller(object):
                 self.__packet_proc = None
             self._is_running = False
         else:
-            log.error("halt() called while Controller not running")
+            log.error("stop() called while Controller not running")
