@@ -60,9 +60,7 @@ class Controller(object):
         else:
             try:
                 self._is_running = True
-                self.__mitm_br = mitm.MitM(
-                    self.iface1, self.iface2
-                )
+                self.__mitm_br = mitm.MitM(self.iface1, self.iface2)
                 self.__packet_proc = packet_processor.PacketProcessor(
                     self.playbook_file_path
                 )

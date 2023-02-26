@@ -42,9 +42,7 @@ class RootWindow(tk.Tk):
         self.cntlr = controller.Controller(iface1, iface2, playbook)
         # Duplication of var, but doesnt make sense for Controller to store tk vars, especially when running without GUI
         self.gui_config = {
-            "playbook_file_path": tk.StringVar(
-                None, self.cntlr.playbook_file_path
-            )
+            "playbook_file_path": tk.StringVar(None, self.cntlr.playbook_file_path)
         }
 
         self.config(
@@ -174,9 +172,7 @@ class MainApplication(tk.Frame):
 
         def open_edit_window(self):
             if self.cntlr.playbook_file_path != "<no playbook file set>":
-                editor_window = json_editor.EditorWindow(
-                    self.cntlr.playbook_file_path
-                )
+                editor_window = json_editor.EditorWindow(self.cntlr.playbook_file_path)
                 if editor_window.winfo_exists():
                     editor_window.transient(self.winfo_toplevel())
                     editor_window.grab_set()

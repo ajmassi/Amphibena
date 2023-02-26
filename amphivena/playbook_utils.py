@@ -59,6 +59,7 @@ schema = {
 
 class PlaybookValidationError(Exception):
     """Base class for exceptions raised during validation of a playbook."""
+
     def __init__(self, message):
         self.message = message
         super().__init__(self.message)

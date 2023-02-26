@@ -59,7 +59,9 @@ if __name__ == "__main__":
     log.debug(args)
     try:
         if args.no_gui:
-            no_gui_controller = controller.Controller(args.iface1, args.iface2, args.playbook)
+            no_gui_controller = controller.Controller(
+                args.iface1, args.iface2, args.playbook
+            )
             asyncio.run(no_gui_controller.start())
         else:
             main_window.initialize(args.iface1, args.iface2, args.playbook)

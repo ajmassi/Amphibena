@@ -19,6 +19,7 @@ log = logging.getLogger(__name__)
 
 class MitmError(Exception):
     """Base class for exceptions raised during MitM lifecycle."""
+
     def __init__(self, message):
         self.message = message
         super().__init__(message)
@@ -26,6 +27,7 @@ class MitmError(Exception):
 
 class MitmInterfaceError(MitmError):
     """Raised when there is a problem with a MitM interface."""
+
     def __init__(self, message):
         self.message = message
         super().__init__(message)
@@ -33,6 +35,7 @@ class MitmInterfaceError(MitmError):
 
 class MitmKernelBrError(MitmError):
     """Raised when there is a problem with the kernel bridge module."""
+
     def __init__(self, message):
         self.message = message
         super().__init__(message)
@@ -56,23 +59,17 @@ def kernel_br_save_state():
             with open("/proc/sys/net/bridge/bridge-nf-call-iptables", "r") as f:
                 kernel_br_state["bridge-nf-call-iptables"] = int(f.read())
 
-            with open(
-                    "/proc/sys/net/bridge/bridge-nf-call-ip6tables", "r"
-            ) as f:
+            with open("/proc/sys/net/bridge/bridge-nf-call-ip6tables", "r") as f:
                 kernel_br_state["bridge-nf-call-ip6tables"] = int(f.read())
 
-            with open(
-                    "/proc/sys/net/bridge/bridge-nf-call-arptables", "r"
-            ) as f:
+            with open("/proc/sys/net/bridge/bridge-nf-call-arptables", "r") as f:
                 kernel_br_state["bridge-nf-call-arptables"] = int(f.read())
 
         else:
             kernel_br_state["br_netfilter_inactive"] = True
 
     except subprocess.CalledProcessError as e:
-        raise MitmKernelBrError(
-            f"Error saving current br_netfilter state: {e}"
-        ) from e
+        raise MitmKernelBrError(f"Error saving current br_netfilter state: {e}") from e
 
     with open(bridge_nf_state_filepath, "w") as f:
         json.dump(kernel_br_state, f, indent=4)
@@ -92,9 +89,7 @@ def kernel_br_module_up():
                 "Amphivena did not close correctly last session.\n"
                 "Initial system br_netfilter state will be restored at the end of this session"
             )
-            log.warning(
-                "Make sure to close the program cleanly using the UI or '^C'"
-            )
+            log.warning("Make sure to close the program cleanly using the UI or '^C'")
         else:
             kernel_br_save_state()
 
@@ -145,15 +140,11 @@ def kernel_br_module_down():
                 f.write(str(kernel_br_state.get("bridge-nf-call-iptables")))
 
         if "bridge-nf-call-ip6tables" in kernel_br_state:
-            with open(
-                "/proc/sys/net/bridge/bridge-nf-call-ip6tables", "w"
-            ) as f:
+            with open("/proc/sys/net/bridge/bridge-nf-call-ip6tables", "w") as f:
                 f.write(str(kernel_br_state.get("bridge-nf-call-ip6tables")))
 
         if "bridge-nf-call-arptables" in kernel_br_state:
-            with open(
-                "/proc/sys/net/bridge/bridge-nf-call-arptables", "w"
-            ) as f:
+            with open("/proc/sys/net/bridge/bridge-nf-call-arptables", "w") as f:
                 f.write(str(kernel_br_state.get("bridge-nf-call-arptables")))
 
         if (
@@ -245,7 +236,9 @@ class MitM:
             and self._interface2
             and self._interface1 == self._interface2
         ):
-            raise MitmInterfaceError("Provided network bridge interfaces cannot be the same")
+            raise MitmInterfaceError(
+                "Provided network bridge interfaces cannot be the same"
+            )
 
         atexit.register(self.stop)
 
