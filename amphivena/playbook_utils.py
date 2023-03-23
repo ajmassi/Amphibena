@@ -1,7 +1,7 @@
+import json
 import logging
 from enum import Enum
 from json.decoder import JSONDecodeError
-from pathlib import Path
 
 import pydantic.error_wrappers
 from pydantic import BaseModel, constr
@@ -13,8 +13,10 @@ log = logging.getLogger(__name__)
 class Condition(BaseModel):
     layer: str
     field: str
-    comparator: str #TODO probs should be enum
-    value: Optional[str] #TODO should be int/str/hex, see stack overflow post in bookmarks that is about this
+    comparator: str  # TODO Enum
+    value: Optional[
+        str
+    ]  # TODO should be int/str/hex, see stack overflow post in bookmarks that is about this
 
 
 class Action(BaseModel):
@@ -25,7 +27,7 @@ class Action(BaseModel):
     layer: str
     type: Type
     field: str
-    value: Optional[str] #TODO sake int/str/hex as above
+    value: Optional[str]  # TODO sake int/str/hex as above
 
 
 class Instruction(BaseModel):
@@ -40,9 +42,9 @@ class Instruction(BaseModel):
 
 class PlaybookMetadata(BaseModel):
     is_ordered: bool
-    loop_when_complete: Optional[bool] = None
-    remove_spent_instructions: Optional[bool] = None
-    instructions: Dict[constr(regex=r'^\d+$'), Instruction]
+    loop_when_complete: Optional[bool] = False
+    remove_spent_instructions: Optional[bool] = True
+    instructions: Optional[Dict[constr(regex=r"^\d+$"), Instruction]]  # noqa: 722
 
 
 class PlaybookValidationError(Exception):
@@ -62,13 +64,19 @@ def load(playbook_file_path):
     :raise PlaybookValidationError: Wraps JSONDecodeError, ValidationError, and FileNotFoundError.
     """
     try:
-        playbook_obj = PlaybookMetadata.parse_file(Path(playbook_file_path), content_type="json")
+        with open(playbook_file_path, "r") as f:
+            playbook_obj = json.load(f)
+
+        playbook_obj = PlaybookMetadata.parse_obj(playbook_obj)
 
         log.info("Playbook validation successful.")
         return playbook_obj
     except JSONDecodeError as e:
         raise PlaybookValidationError(f"Playbook json invalid: {e}") from e
     except pydantic.error_wrappers.ValidationError as e:
-        raise PlaybookValidationError(f"Playbook schema invalid: {e.errors()}") from e
+        message = "Playbook schema invalid:"
+        for err in e.errors():
+            message += f"\n{err.get('loc')}: {err.get('msg')}"
+        raise PlaybookValidationError(message) from e
     except FileNotFoundError as e:
         raise PlaybookValidationError(f"Playbook not found: '{e.filename}'") from e

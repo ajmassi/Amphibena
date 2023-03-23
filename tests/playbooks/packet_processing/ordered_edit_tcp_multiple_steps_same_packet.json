@@ -1,5 +1,5 @@
 {
-  "isOrdered": true,
+  "is_ordered": true,
   "instructions": {
     "1": {
       "operation": "edit",

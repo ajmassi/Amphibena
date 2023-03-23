@@ -57,14 +57,10 @@ class PacketProcessor:
         except playbook_utils.PlaybookValidationError as e:
             raise e
 
-        self._remaining_instructions = copy.deepcopy(
-            self._playbook_data.get("instructions")
-        )
-        self._playbook_is_ordered = self._playbook_data.get("isOrdered")
-        self._loop_when_complete = self._playbook_data.get("loopWhenComplete", False)
-        self._remove_spent_instructions = self._playbook_data.get(
-            "removeSpentInstructions", True
-        )
+        self._remaining_instructions = copy.deepcopy(self._playbook_data.instructions)
+        self._playbook_is_ordered = self._playbook_data.is_ordered
+        self._loop_when_complete = self._playbook_data.loop_when_complete
+        self._remove_spent_instructions = self._playbook_data.remove_spent_instructions
         self.proc = None
 
     async def start(self):
@@ -113,15 +109,13 @@ class PacketProcessor:
         log.info("Starting processing")
         for instruction in instr_list:
             try:
-                if instruction["operation"] == "drop":
+                if instruction.operation is playbook_utils.Instruction.Operation.drop:
                     self._drop(pkt)
                     return
-                elif instruction["operation"] == "edit":
+                elif instruction.operation is playbook_utils.Instruction.Operation.edit:
                     self._edit_packet(scapy_packet, instruction)
                 else:
-                    log.error(
-                        f"Unknown packet operation '{instruction.get('operation')}'"
-                    )
+                    log.error(f"Unknown packet operation '{instruction.operation}'")
             except KeyError:
                 log.error("Packet operation [drop, edit] not defined.")
 
@@ -178,7 +172,7 @@ class PacketProcessor:
 
         if not self._remaining_instructions and self._loop_when_complete:
             self._remaining_instructions = copy.deepcopy(
-                self._playbook_data.get("instructions")
+                self._playbook_data.instructions
             )
 
         return instr_list
@@ -192,16 +186,16 @@ class PacketProcessor:
         :param instruction: dict - playbook instruction
         :return: boolean
         """
-        if conditions := instruction.get("conditions"):
+        if conditions := instruction.conditions:
             for c in conditions:
-                layer = c.get("layer")
+                layer = c.layer
                 if scapy_packet.haslayer(layer):
                     try:
-                        packet_field = getattr(scapy_packet.getlayer(layer), c["field"])
+                        packet_field = getattr(scapy_packet.getlayer(layer), c.field)
                         # TODOish An assumption is made here that we want to attempt type-sameness, but we might want a
                         #  mode that throws caution to the wind
                         try:
-                            comp_value = type(packet_field)(c["value"])
+                            comp_value = type(packet_field)(c.value)
                         except ValueError as e:
                             log.error(e)
                             return False
@@ -211,7 +205,7 @@ class PacketProcessor:
                             return False
                     except AttributeError:
                         log.error(
-                            f"Condition `{c}` attempted\nTarget packet does not contain field `{c['field']}`"
+                            f"Condition `{c}` attempted\nTarget packet does not contain field `{c.field}`"
                         )
                         return False
                 else:
@@ -232,31 +226,33 @@ class PacketProcessor:
         :param scapy_packet: Scapy.Packet - parsed from NFQueue
         :param instruction: dict - playbook instruction
         """
-        if actions := instruction.get("actions"):
+        if actions := instruction.actions:
             for a in actions:
-                layer = a.get("layer")
+                layer = a.layer
                 if scapy_packet.haslayer(layer):
-                    if a.get("type") == "modify":
+                    if a.type is playbook_utils.Action.Type.modify:
                         try:
                             packet_field = getattr(
-                                scapy_packet.getlayer(layer), a["field"]
+                                scapy_packet.getlayer(layer), a.field
                             )
 
                             try:
-                                new_value = type(packet_field)(a["value"])
+                                new_value = type(packet_field)(a.value)
                             except ValueError as e:
                                 log.error(e)
                                 return False
 
                             setattr(
-                                scapy_packet.getlayer(instruction.get("layer")),
-                                a.get("field"),
+                                scapy_packet.getlayer(
+                                    layer
+                                ),  # TODO this was instruction.get("layer")? investigate
+                                a.field,
                                 new_value,
                             )
 
                         except AttributeError:
                             log.error(
-                                f"Action `{a}` attempted\nTarget packet does not contain field `{a['field']}`"
+                                f"Action `{a}` attempted\nTarget packet does not contain field `{a.field}`"
                             )
                             return False
                 else:
