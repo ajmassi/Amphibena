@@ -4,6 +4,7 @@ import json
 import logging.config
 import pathlib
 import sys
+
 import tomllib
 
 from amphivena import controller
@@ -24,8 +25,8 @@ if __name__ == "__main__":
             raise e
 
     parser = argparse.ArgumentParser(
-        prog=data.get("tool")["poetry"]["name"],
-        description=data.get("tool")["poetry"]["description"],
+        prog=data.get("project").get("name"),
+        description=data.get("project").get("description"),
     )
     parser.add_argument(
         "--no-gui",
