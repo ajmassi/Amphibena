@@ -31,7 +31,7 @@ def test_required_fields_root(new_packet_processor):
     playbook_json = "{}"
     with pytest.raises(
         PlaybookValidationError,
-        match=re.escape("Playbook schema invalid:\n('is_ordered',): field required"),
+        match=re.escape("Playbook schema invalid:\n('is_ordered',): Field required"),
     ):
         with mock.patch("builtins.open", mock.mock_open(read_data=playbook_json)):
             new_packet_processor.get("mocked.json")
@@ -60,7 +60,7 @@ def test_required_fields_instruction(new_packet_processor):
     with pytest.raises(
         PlaybookValidationError,
         match=re.escape(
-            "Playbook schema invalid:\n('instructions', '1', 'operation'): field required"
+            "Playbook schema invalid:\n('instructions', '1', 'operation'): Field required"
         ),
     ):
         with mock.patch(
@@ -80,7 +80,7 @@ def test_required_fields_condition(new_packet_processor):
     with pytest.raises(
         PlaybookValidationError,
         match=re.escape(
-            "Playbook schema invalid:\n('instructions', '1', 'conditions', 0, 'layer'): field required"
+            "Playbook schema invalid:\n('instructions', '1', 'conditions', 0, 'layer'): Field required"
         ),
     ):
         with mock.patch("builtins.open", mock.mock_open(read_data=playbook_no_layer)):
@@ -90,7 +90,7 @@ def test_required_fields_condition(new_packet_processor):
     with pytest.raises(
         PlaybookValidationError,
         match=re.escape(
-            "Playbook schema invalid:\n('instructions', '1', 'conditions', 0, 'field'): field required"
+            "Playbook schema invalid:\n('instructions', '1', 'conditions', 0, 'field'): Field required"
         ),
     ):
         with mock.patch("builtins.open", mock.mock_open(read_data=playbook_no_field)):
@@ -100,7 +100,7 @@ def test_required_fields_condition(new_packet_processor):
     with pytest.raises(
         PlaybookValidationError,
         match=re.escape(
-            "Playbook schema invalid:\n('instructions', '1', 'conditions', 0, 'comparator'): field required"
+            "Playbook schema invalid:\n('instructions', '1', 'conditions', 0, 'comparator'): Field required"
         ),
     ):
         with mock.patch(
@@ -125,7 +125,7 @@ def test_required_fields_action(new_packet_processor):
     with pytest.raises(
         PlaybookValidationError,
         match=re.escape(
-            "Playbook schema invalid:\n('instructions', '1', 'actions', 0, 'type'): field required"
+            "Playbook schema invalid:\n('instructions', '1', 'actions', 0, 'type'): Field required"
         ),
     ):
         with mock.patch("builtins.open", mock.mock_open(read_data=playbook_no_type)):
@@ -135,7 +135,7 @@ def test_required_fields_action(new_packet_processor):
     with pytest.raises(
         PlaybookValidationError,
         match=re.escape(
-            "Playbook schema invalid:\n('instructions', '1', 'actions', 0, 'field'): field required"
+            "Playbook schema invalid:\n('instructions', '1', 'actions', 0, 'field'): Field required"
         ),
     ):
         with mock.patch("builtins.open", mock.mock_open(read_data=playbook_no_field)):
@@ -154,7 +154,7 @@ def test_invalid_operation(new_packet_processor):
     with pytest.raises(
         PlaybookValidationError,
         match=re.escape(
-            "Playbook schema invalid:\n('instructions', '1', 'operation'): value is not a valid enumeration member; permitted: 'edit', 'drop'"
+            "Playbook schema invalid:\n('instructions', '1', 'operation'): Input should be 'edit' or 'drop'"
         ),
     ):
         with mock.patch("builtins.open", mock.mock_open(read_data=playbook_json)):
