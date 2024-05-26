@@ -1,5 +1,6 @@
 #JetBrains
 .idea/
+*.egg-info/
 
 .venv/
 .pytest_cache
