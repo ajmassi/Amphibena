@@ -2,10 +2,10 @@ import json
 import logging
 from enum import Enum
 from json.decoder import JSONDecodeError
+from typing import Dict, List, Optional
 
 import pydantic.error_wrappers
-from pydantic import BaseModel, constr
-from pydantic.typing import Dict, List, Optional
+from pydantic import BaseModel
 
 log = logging.getLogger(__name__)
 
@@ -14,9 +14,7 @@ class Condition(BaseModel):
     layer: str
     field: str
     comparator: str  # TODO Enum
-    value: Optional[
-        str
-    ]  # TODO should be int/str/hex, see stack overflow post in bookmarks that is about this
+    value: Optional[str | int] = None
 
 
 class Action(BaseModel):
@@ -27,7 +25,7 @@ class Action(BaseModel):
     layer: str
     type: Type
     field: str
-    value: Optional[str]  # TODO sake int/str/hex as above
+    value: Optional[str | int] = None
 
 
 class Instruction(BaseModel):
@@ -36,15 +34,15 @@ class Instruction(BaseModel):
         drop = "drop"
 
     operation: Operation
-    conditions: Optional[List[Condition]]
-    actions: Optional[List[Action]]
+    conditions: Optional[List[Condition]] = None
+    actions: Optional[List[Action]] = None
 
 
 class PlaybookMetadata(BaseModel):
     is_ordered: bool
     loop_when_complete: Optional[bool] = False
     remove_spent_instructions: Optional[bool] = True
-    instructions: Optional[Dict[constr(regex=r"^\d+$"), Instruction]]  # noqa: 722
+    instructions: Optional[Dict[int, Instruction]] = None
 
 
 class PlaybookValidationError(Exception):
@@ -67,7 +65,7 @@ def load(playbook_file_path):
         with open(playbook_file_path, "r") as f:
             playbook_obj = json.load(f)
 
-        playbook_obj = PlaybookMetadata.parse_obj(playbook_obj)
+        playbook_obj = PlaybookMetadata.model_validate(playbook_obj)
 
         log.info("Playbook validation successful.")
         return playbook_obj
