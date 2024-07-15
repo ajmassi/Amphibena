@@ -241,7 +241,11 @@ class JsonEditor:
         )
 
     def add_node(
-        self, key: str, value: str, node: str = "", tags: list | None = None,
+        self,
+        key: str,
+        value: str,
+        node: str = "",
+        tags: list | None = None,
     ) -> None:
         """
         Performs a recursive traversal to populate the item tree starting from given node.

@@ -15,4 +15,4 @@ where = ["amphivena"]
 
 [tool.ruff.lint]
 select = ["ALL"]
-ignore = ["D", "E501", "TD", "FIX"]
+ignore = ["COM812", "ISC001", "D", "E501", "TD", "FIX"]

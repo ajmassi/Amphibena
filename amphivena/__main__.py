@@ -18,7 +18,9 @@ log = logging.getLogger(__name__)
 
 if __name__ == "__main__":
     # Retrieve application metadata
-    with pathlib.Path(config_directory.parent.joinpath("pyproject.toml")).open("rb") as pyproject:
+    with pathlib.Path(config_directory.parent.joinpath("pyproject.toml")).open(
+        "rb"
+    ) as pyproject:
         data = tomllib.load(pyproject)
 
     parser = argparse.ArgumentParser(
@@ -58,7 +60,9 @@ if __name__ == "__main__":
     try:
         if args.no_gui:
             no_gui_controller = controller.Controller(
-                args.iface1, args.iface2, args.playbook,
+                args.iface1,
+                args.iface2,
+                args.playbook,
             )
             asyncio.run(no_gui_controller.start())
         else:

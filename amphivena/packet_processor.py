@@ -99,8 +99,7 @@ class PacketProcessor:
             nfqueue.unbind()
 
     def _process(self, pkt: netfilterqueue.Packet) -> None:
-        """ Evaluate the current Packet, determine what playbook steps will be applied to it, call operations as needed.
-        """
+        """Evaluate the current Packet, determine what playbook steps will be applied to it, call operations as needed."""
         scapy_packet = IP(pkt.get_payload())
 
         instr_list = self._assemble_instruction_list(scapy_packet)
@@ -113,7 +112,9 @@ class PacketProcessor:
                 elif instruction.operation is playbook_utils.Instruction.Operation.edit:  # noqa: RET505
                     self._edit_packet(scapy_packet, instruction)
                 else:
-                    log.exception("Unknown packet operation '%s'", instruction.operation)
+                    log.exception(
+                        "Unknown packet operation '%s'", instruction.operation
+                    )
         except KeyError:
             log.exception("Packet operation [drop, edit] not defined.")
 
@@ -170,7 +171,9 @@ class PacketProcessor:
         return instr_list
 
     @staticmethod
-    def _analyze_packet(scapy_packet: Packet, instruction: playbook_utils.Instruction) -> bool:
+    def _analyze_packet(
+        scapy_packet: Packet, instruction: playbook_utils.Instruction
+    ) -> bool:
         """
         Evaluate scapy_packet against the current instruction's conditions to determine if the given step will execute.
 
@@ -192,16 +195,20 @@ class PacketProcessor:
                             return False
 
                         if packet_field != comp_value:
-                            log.debug("`%s` != `%s`", packet_field,comp_value)
+                            log.debug("`%s` != `%s`", packet_field, comp_value)
                             return False
                     except AttributeError:
                         log.exception(
-                            "Condition `%s` attempted\nTarget packet does not contain field `%s`", c, c.field,
+                            "Condition `%s` attempted\nTarget packet does not contain field `%s`",
+                            c,
+                            c.field,
                         )
                         return False
                 else:
                     log.exception(
-                        "Instruction `%s` attempted\nTarget packet does not contain layer `%s`", instruction, layer,
+                        "Instruction `%s` attempted\nTarget packet does not contain layer `%s`",
+                        instruction,
+                        layer,
                     )
                     return False
         else:
@@ -210,7 +217,9 @@ class PacketProcessor:
         return True
 
     @staticmethod
-    def _edit_packet(scapy_packet: Packet, instruction: playbook_utils.Instruction) -> None:
+    def _edit_packet(
+        scapy_packet: Packet, instruction: playbook_utils.Instruction
+    ) -> None:
         """
         Apply changes to packet as defined by playbook instruction's actions.
 
@@ -224,7 +233,8 @@ class PacketProcessor:
                     if a.type is playbook_utils.Action.Type.modify:
                         try:
                             packet_field = getattr(
-                                scapy_packet.getlayer(layer), a.field,
+                                scapy_packet.getlayer(layer),
+                                a.field,
                             )
 
                             try:
@@ -243,12 +253,16 @@ class PacketProcessor:
 
                         except AttributeError:
                             log.exception(
-                                "Action `%s` attempted\nTarget packet does not contain field `%s`", a, a.field,
+                                "Action `%s` attempted\nTarget packet does not contain field `%s`",
+                                a,
+                                a.field,
                             )
                             return
                 else:
                     log.exception(
-                        "Instruction `%s` attempted\nTarget packet does not contain layer `%s`", instruction, layer,
+                        "Instruction `%s` attempted\nTarget packet does not contain layer `%s`",
+                        instruction,
+                        layer,
                     )
         else:
             log.warning("No actions set for instruction:\n%s", instruction)

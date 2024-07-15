@@ -129,7 +129,8 @@ def kernel_br_module_up() -> None:
     except subprocess.CalledProcessError as e:
         msg = "Error configuring kernel network bridge module: \n%s"
         raise MitmKernelBrError(
-            msg, e,
+            msg,
+            e,
         ) from e
 
 
@@ -200,7 +201,9 @@ class MitM:
             )
 
         pathlib.Path.mkdir(
-            pathlib.Path.parent(bridge_nf_state_filepath), parents=True, exist_ok=True,
+            pathlib.Path.parent(bridge_nf_state_filepath),
+            parents=True,
+            exist_ok=True,
         )
         return super().__new__(cls)
 
@@ -470,7 +473,8 @@ def get_args() -> dict[str, str]:
     Not expected for mitm.py to be called from the command line often, however this is here just in case.
     """
     parser = argparse.ArgumentParser(
-        description="", epilog="ex: mitm.py -i eth0 -b eth1",
+        description="",
+        epilog="ex: mitm.py -i eth0 -b eth1",
     )
 
     parser.add_argument(
