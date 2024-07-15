@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import queue
 import signal
@@ -13,7 +15,7 @@ from amphivena.gui import json_editor
 log = logging.getLogger(__name__)
 
 
-def initialize(iface1, iface2, playbook):
+def initialize(iface1: str, iface2: str, playbook: str) -> None:
     tk_root = RootWindow(iface1, iface2, playbook)
     tk_root.mainloop()
 
@@ -21,32 +23,33 @@ def initialize(iface1, iface2, playbook):
 class QueueHandler(logging.Handler):
     """Log record queue for staging logs destined for the ConsoleFrame"""
 
-    def __init__(self, log_queue):
+    def __init__(self, log_queue: queue.Queue) -> None:
         super().__init__()
         self.log_queue = log_queue
 
-    def emit(self, record):
+    def emit(self, record: logging.LogRecord) -> None:
         self.log_queue.put(record)
 
 
 class RootWindow(tk.Tk):
-    def __init__(self, iface1, iface2, playbook):
+    def __init__(self, iface1: str, iface2: str, playbook: str) -> None:
         tk.Tk.__init__(self)
 
         self.title("Amphivena")
         self.geometry("600x400")
         self.minsize(300, 200)
-        self.resizable(True, True)
-        self.option_add("*tearOff", False)
+        self.resizable(width=True, height=True)
+        self.option_add("*tearOff", value=False)
 
         self.cntlr = controller.Controller(iface1, iface2, playbook)
         # Duplication of var, but doesnt make sense for Controller to store tk vars, especially when running without GUI
         self.gui_config = {
-            "playbook_file_path": tk.StringVar(None, self.cntlr.playbook_file_path)
+            "playbook_file_path": tk.StringVar(None, self.cntlr.playbook_file_path),
         }
 
         self.config(
-            menu=RootWindow.MenuBar(self, self.cntlr, self.gui_config), bg="grey2"
+            menu=RootWindow.MenuBar(self, self.cntlr, self.gui_config),
+            bg="grey2",
         )
         self.main_application = MainApplication(self, self.cntlr, self.gui_config)
 
@@ -54,13 +57,18 @@ class RootWindow(tk.Tk):
         self.bind("<Control-q>", self.quit)
         signal.signal(signal.SIGINT, self.quit)
 
-    def quit(self, *args):
+    def quit(self) -> None:
         if self.cntlr.is_running:
             self.cntlr.halt()
         self.destroy()
 
     class MenuBar(tk.Menu):
-        def __init__(self, parent, cntlr, gui_config):
+        def __init__(
+            self,
+            parent: tk.Tk,
+            cntlr: controller.Controller,
+            gui_config: dict[str, str],
+        ) -> None:
             tk.Menu.__init__(self, parent)
 
             self.parent = parent
@@ -69,7 +77,7 @@ class RootWindow(tk.Tk):
             self.add_cascade(label="File", menu=self.file_menu())
             self.add_cascade(label="MitM", menu=self.mitm_menu())
 
-        def file_menu(self):
+        def file_menu(self) -> tk.Menu:
             filemenu = tk.Menu(self, tearoff=0)
             filemenu.add_command(label="New")
             filemenu.add_command(label="Load", command=self.load_playbook)
@@ -77,8 +85,8 @@ class RootWindow(tk.Tk):
             filemenu.add_command(label="Exit", command=self.master.quit)
             return filemenu
 
-        def mitm_menu(self):
-            def edit_iface(iface):
+        def mitm_menu(self) -> tk.Menu:
+            def edit_iface(iface: str) -> None:
                 dialog = simpledialog.askstring(
                     title="Edit Interface",
                     prompt="Interface name (ex. 'eth0'):",
@@ -89,14 +97,13 @@ class RootWindow(tk.Tk):
                     setattr(self.cntlr, iface, None)
                 elif dialog:
                     setattr(self.cntlr, iface, dialog)
-                return
 
             mitmmenu = tk.Menu(self, tearoff=0)
             mitmmenu.add_command(label="iface1", command=lambda: edit_iface("iface1"))
             mitmmenu.add_command(label="iface2", command=lambda: edit_iface("iface2"))
             return mitmmenu
 
-        def load_playbook(self):
+        def load_playbook(self) -> None:
             filename = filedialog.askopenfilename(
                 title="Open a Amp playbook file",
                 initialdir="./",
@@ -106,13 +113,18 @@ class RootWindow(tk.Tk):
             if filename:
                 self.gui_config.get("playbook_file_path").set(filename)
                 self.cntlr.playbook_file_path = filename
-                log.info(f"Selected playbook: {filename}")
+                log.info("Selected playbook: %s", filename)
 
 
 class MainApplication(tk.Frame):
     """Main Container"""
 
-    def __init__(self, parent, cntlr, gui_config):
+    def __init__(
+        self,
+        parent: RootWindow,
+        cntlr: controller.Controller,
+        gui_config: dict[str, str],
+    ) -> None:
         tk.Frame.__init__(self, parent)
         self.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
@@ -120,10 +132,20 @@ class MainApplication(tk.Frame):
         self.console = self.ConsoleFrame(self)
 
         self.controls.pack(
-            anchor=tk.N, fill=tk.X, expand=False, side=tk.TOP, padx=10, pady=15
+            anchor=tk.N,
+            fill=tk.X,
+            expand=False,
+            side=tk.TOP,
+            padx=10,
+            pady=15,
         )
         self.console.pack(
-            anchor=tk.S, fill=tk.BOTH, expand=True, side=tk.BOTTOM, padx=5, pady=5
+            anchor=tk.S,
+            fill=tk.BOTH,
+            expand=True,
+            side=tk.BOTTOM,
+            padx=5,
+            pady=5,
         )
 
     ##################
@@ -135,7 +157,12 @@ class MainApplication(tk.Frame):
         Contains the controls for selecting playbook, opening editor, and beginning execution.
         """
 
-        def __init__(self, parent: tk.Frame, cntlr, gui_config):
+        def __init__(
+            self,
+            parent: tk.Frame,
+            cntlr: controller.Controller,
+            gui_config: dict[str, str],
+        ) -> None:
             tk.Frame.__init__(self, parent, height=100)
 
             self.cntlr = cntlr
@@ -157,11 +184,14 @@ class MainApplication(tk.Frame):
             self.update_play_button()
 
             self.playbook_file_path_button.pack(
-                side=tk.LEFT, fill=tk.BOTH, expand=1, padx=10
+                side=tk.LEFT,
+                fill=tk.BOTH,
+                expand=1,
+                padx=10,
             )
             self.run_playbook_button.pack(side=tk.RIGHT, expand=0, padx=(0, 10))
 
-        def update_play_button(self):
+        def update_play_button(self) -> None:
             # Update play/pause button icon on regular interval
             # This is an easy way to work around there being no easy way to pass information from the controller thread
             if self.cntlr.is_running:
@@ -170,7 +200,7 @@ class MainApplication(tk.Frame):
                 self.play_pause_string.set(value=f"{chr(0x25B6)}")
             self.after(500, self.update_play_button)
 
-        def open_edit_window(self):
+        def open_edit_window(self) -> None:
             if self.cntlr.playbook_file_path != "<no playbook file set>":
                 editor_window = json_editor.EditorWindow(self.cntlr.playbook_file_path)
                 if editor_window.winfo_exists():
@@ -183,7 +213,7 @@ class MainApplication(tk.Frame):
         Display Amphivena logs in real time.
         """
 
-        def __init__(self, parent: tk.Frame):
+        def __init__(self, parent: tk.Frame) -> None:
             tk.Frame.__init__(self, parent, bg="white")
 
             self.scrolled_text = ScrolledText(self, state="disabled")
@@ -208,7 +238,7 @@ class MainApplication(tk.Frame):
 
             self.scrolled_text.pack(fill="both", expand=True)
 
-        def display(self, record):
+        def display(self, record: logging.LogRecord) -> None:
             msg = self.queue_handler.format(record)
             self.scrolled_text.configure(state="normal")
             self.scrolled_text.insert(tk.END, msg + "\n", record.levelname)
@@ -216,12 +246,12 @@ class MainApplication(tk.Frame):
             # Autoscroll to the bottom
             self.scrolled_text.yview(tk.END)
 
-        def poll_log_queue(self):
+        def poll_log_queue(self) -> None:
             # Check every 100ms if there is a new message in the queue to display
             while True:
                 try:
                     record = self.log_queue.get(block=False)
-                except queue.Empty:
+                except queue.Empty:  # noqa: PERF203
                     break
                 else:
                     self.display(record)
