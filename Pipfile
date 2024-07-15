@@ -15,6 +15,7 @@ cryptography = "~=39.0.1"
 [dev-packages]
 amphivena = {file = ".", editable = true}
 pytest = "*"
+ruff = "*"
 
 [requires]
 python_version = "3.11"

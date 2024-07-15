@@ -2,13 +2,17 @@
 name = "amphivena"
 version = "0.0.0"
 description = "Python-based MitM tool for exercising packet manipulation with byte-level precision."
-authors = [{name = "Alex Massi"}]
+authors = [{ name = "Alex Massi" }]
 readme = "README.md"
-license = {text = "AGPL-3"}
+license = { text = "AGPL-3" }
 
 [build-system]
-requires=["setuptools"]
+requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["amphivena"]
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = ["D", "E501", "TD", "FIX"]
