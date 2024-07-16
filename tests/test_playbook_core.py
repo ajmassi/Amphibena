@@ -1,4 +1,5 @@
 import re
+from pathlib import Path
 from unittest import mock
 
 import pytest
@@ -22,7 +23,7 @@ def test_json_error(new_packet_processor):
         match="^Playbook json invalid: Invalid control character",
     ):
         # Cleaner to mock file contents than make lots of small files
-        with mock.patch("builtins.open", mock.mock_open(read_data=playbook_json)):
+        with mock.patch.object(Path, "open", mock.mock_open(read_data=playbook_json)):
             new_packet_processor.get("mocked.json")
 
 
@@ -33,7 +34,7 @@ def test_required_fields_root(new_packet_processor):
         PlaybookValidationError,
         match=re.escape("Playbook schema invalid:\n('is_ordered',): Field required"),
     ):
-        with mock.patch("builtins.open", mock.mock_open(read_data=playbook_json)):
+        with mock.patch.object(Path, "open", mock.mock_open(read_data=playbook_json)):
             new_packet_processor.get("mocked.json")
 
 
@@ -42,12 +43,16 @@ def test_optional_fields_root(new_packet_processor):
     playbook_assignments = """{"is_ordered":true,"loop_when_complete":true,"remove_spent_instructions":false}"""
     playbook_no_assignments = """{"is_ordered":true}"""
 
-    with mock.patch("builtins.open", mock.mock_open(read_data=playbook_no_assignments)):
+    with mock.patch.object(
+        Path, "open", mock.mock_open(read_data=playbook_no_assignments)
+    ):
         packet_processor = new_packet_processor.get("mocked.json")
         assert packet_processor._loop_when_complete is False
         assert packet_processor._remove_spent_instructions is True
 
-    with mock.patch("builtins.open", mock.mock_open(read_data=playbook_assignments)):
+    with mock.patch.object(
+        Path, "open", mock.mock_open(read_data=playbook_assignments)
+    ):
         packet_processor = new_packet_processor.get("mocked.json")
         assert packet_processor._loop_when_complete is True
         assert packet_processor._remove_spent_instructions is False
@@ -63,8 +68,8 @@ def test_required_fields_instruction(new_packet_processor):
             "Playbook schema invalid:\n('instructions', '1', 'operation'): Field required"
         ),
     ):
-        with mock.patch(
-            "builtins.open", mock.mock_open(read_data=playbook_no_operation)
+        with mock.patch.object(
+            Path, "open", mock.mock_open(read_data=playbook_no_operation)
         ):
             new_packet_processor.get("mocked.json")
 
@@ -83,7 +88,9 @@ def test_required_fields_condition(new_packet_processor):
             "Playbook schema invalid:\n('instructions', '1', 'conditions', 0, 'layer'): Field required"
         ),
     ):
-        with mock.patch("builtins.open", mock.mock_open(read_data=playbook_no_layer)):
+        with mock.patch.object(
+            Path, "open", mock.mock_open(read_data=playbook_no_layer)
+        ):
             new_packet_processor.get("mocked.json")
 
     # Required step condition field "field"
@@ -93,7 +100,9 @@ def test_required_fields_condition(new_packet_processor):
             "Playbook schema invalid:\n('instructions', '1', 'conditions', 0, 'field'): Field required"
         ),
     ):
-        with mock.patch("builtins.open", mock.mock_open(read_data=playbook_no_field)):
+        with mock.patch.object(
+            Path, "open", mock.mock_open(read_data=playbook_no_field)
+        ):
             new_packet_processor.get("mocked.json")
 
     # Required step condition field "comparator"
@@ -103,13 +112,13 @@ def test_required_fields_condition(new_packet_processor):
             "Playbook schema invalid:\n('instructions', '1', 'conditions', 0, 'comparator'): Field required"
         ),
     ):
-        with mock.patch(
-            "builtins.open", mock.mock_open(read_data=playbook_no_comparator)
+        with mock.patch.object(
+            Path, "open", mock.mock_open(read_data=playbook_no_comparator)
         ):
             new_packet_processor.get("mocked.json")
 
     # Optional step condition field "value"
-    with mock.patch("builtins.open", mock.mock_open(read_data=playbook_no_value)):
+    with mock.patch.object(Path, "open", mock.mock_open(read_data=playbook_no_value)):
         packet_processor = new_packet_processor.get("mocked.json")
         assert packet_processor is not None
         assert packet_processor._playbook_is_ordered is False
@@ -128,7 +137,9 @@ def test_required_fields_action(new_packet_processor):
             "Playbook schema invalid:\n('instructions', '1', 'actions', 0, 'type'): Field required"
         ),
     ):
-        with mock.patch("builtins.open", mock.mock_open(read_data=playbook_no_type)):
+        with mock.patch.object(
+            Path, "open", mock.mock_open(read_data=playbook_no_type)
+        ):
             new_packet_processor.get("mocked.json")
 
     # Required step action field "field"
@@ -138,11 +149,13 @@ def test_required_fields_action(new_packet_processor):
             "Playbook schema invalid:\n('instructions', '1', 'actions', 0, 'field'): Field required"
         ),
     ):
-        with mock.patch("builtins.open", mock.mock_open(read_data=playbook_no_field)):
+        with mock.patch.object(
+            Path, "open", mock.mock_open(read_data=playbook_no_field)
+        ):
             new_packet_processor.get("mocked.json")
 
     # Optional step action field "value"
-    with mock.patch("builtins.open", mock.mock_open(read_data=playbook_no_value)):
+    with mock.patch.object(Path, "open", mock.mock_open(read_data=playbook_no_value)):
         packet_processor = new_packet_processor.get("mocked.json")
         assert packet_processor is not None
         assert packet_processor._playbook_is_ordered is False
@@ -157,5 +170,6 @@ def test_invalid_operation(new_packet_processor):
             "Playbook schema invalid:\n('instructions', '1', 'operation'): Input should be 'edit' or 'drop'"
         ),
     ):
-        with mock.patch("builtins.open", mock.mock_open(read_data=playbook_json)):
+        # with mock.patch("builtins.open", mock.mock_open(read_data=playbook_json)):
+        with mock.patch.object(Path, "open", mock.mock_open(read_data=playbook_json)):
             new_packet_processor.get("mocked.json")
