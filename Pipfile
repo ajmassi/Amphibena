@@ -10,7 +10,7 @@ multiprocessing-logging = "*"
 pytest-cov = "*"
 python-dotenv = "*"
 netfilterqueue = "*"
-cryptography = "*"
+cryptography = "<42"
 
 [dev-packages]
 amphivena = {file = ".", editable = true}
