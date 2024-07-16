@@ -67,16 +67,16 @@ def load(playbook_file_path: str) -> PlaybookMetadata:
 
         playbook_obj = PlaybookMetadata.model_validate(playbook_obj)
     except JSONDecodeError as e:
-        msg = "Playbook json invalid: %s"
-        raise PlaybookValidationError(msg, e) from e
-    except pydantic.error_wrappers.ValidationError as e:
+        msg = f"Playbook json invalid: {e}"
+        raise PlaybookValidationError(msg) from e
+    except pydantic.ValidationError as e:
         message = "Playbook schema invalid:"
         for err in e.errors():
             message += f"\n{err.get('loc')}: {err.get('msg')}"
         raise PlaybookValidationError(message) from e
     except FileNotFoundError as e:
-        msg = "Playbook not found: '%s'"
-        raise PlaybookValidationError(msg, e.filename) from e
+        msg = f"Playbook not found: '{e.filename}'"
+        raise PlaybookValidationError(msg) from e
     else:
         log.info("Playbook validation successful.")
         return playbook_obj
