@@ -27,5 +27,4 @@ jobs:
         pipenv sync --dev
     - name: Run Tests
       run: |
-        pipenv shell
-        pytest
+        pipenv run pytest
