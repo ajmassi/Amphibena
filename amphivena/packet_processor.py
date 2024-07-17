@@ -217,9 +217,7 @@ class PacketProcessor:
         return True
 
     @staticmethod
-    def _edit_packet(
-        scapy_packet: Packet, instruction: playbook.Instruction
-    ) -> None:
+    def _edit_packet(scapy_packet: Packet, instruction: playbook.Instruction) -> None:
         """
         Apply changes to packet as defined by playbook instruction's actions.
 
