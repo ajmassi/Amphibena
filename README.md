@@ -55,10 +55,10 @@ Primary packages used by Amphivena:
 
 The following are quick steps to get Amphivena running.
 
-### Prerequisites
+### Dependencies
 ```
 Python >= 3.11
-Poetry >= 1.2
+Pipenv
 ```
 
 ### Environment Prep
@@ -80,11 +80,13 @@ sudo su
 ```
 2. Install dependencies
 ```
-poetry install
+pip install pipenv
+pipenv sync
 ```
 3. Start the UI!
 ```
-poetry run python amphivena
+pipenv shell
+pipenv -m amphivena
 ```
 
 
