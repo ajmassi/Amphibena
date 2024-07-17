@@ -4,28 +4,28 @@ import json
 import logging.config
 import pathlib
 import sys
+
 import tomllib
 
 from amphivena import controller
 from amphivena.gui import main_window
 
 config_directory = pathlib.Path(__file__).parent.absolute()
-with open(config_directory.joinpath("logger.conf")) as logger_conf:
+with pathlib.Path(config_directory.joinpath("logger.conf")).open() as logger_conf:
     logging.config.dictConfig(json.load(logger_conf))
 
 log = logging.getLogger(__name__)
 
 if __name__ == "__main__":
     # Retrieve application metadata
-    with open(config_directory.parent.joinpath("pyproject.toml"), "rb") as pyproject:
-        try:
-            data = tomllib.load(pyproject)
-        except tomllib.TOMLDecodeError as e:
-            raise e
+    with pathlib.Path(config_directory.parent.joinpath("pyproject.toml")).open(
+        "rb"
+    ) as pyproject:
+        data = tomllib.load(pyproject)
 
     parser = argparse.ArgumentParser(
-        prog=data.get("tool")["poetry"]["name"],
-        description=data.get("tool")["poetry"]["description"],
+        prog=data.get("project").get("name"),
+        description=data.get("project").get("description"),
     )
     parser.add_argument(
         "--no-gui",
@@ -60,7 +60,9 @@ if __name__ == "__main__":
     try:
         if args.no_gui:
             no_gui_controller = controller.Controller(
-                args.iface1, args.iface2, args.playbook
+                args.iface1,
+                args.iface2,
+                args.playbook,
             )
             asyncio.run(no_gui_controller.start())
         else:

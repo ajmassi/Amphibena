@@ -1,0 +1,21 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+pydantic = "*"
+scapy = "*"
+multiprocessing-logging = "*"
+pytest-cov = "*"
+python-dotenv = "*"
+netfilterqueue = "*"
+cryptography = "<42"
+
+[dev-packages]
+amphivena = {file = ".", editable = true}
+pytest = "*"
+ruff = "*"
+
+[requires]
+python_version = "3.11"

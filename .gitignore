@@ -1,8 +1,10 @@
 #JetBrains
 .idea/
+*.egg-info/
 
 .venv/
-.pytest_cache
+.pytest_cache/
+.ruff_cache/
 .coverage
 __pycache__/
 htmlcov/

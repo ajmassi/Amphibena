@@ -19,12 +19,12 @@ jobs:
       uses: actions/setup-python@v3
       with:
         python-version: ${{ matrix.python-version }}
-    - name: Set up Poetry
-      uses: abatilo/actions-poetry@v2
-      with:
-        poetry-version: '1.2.2'
-    - name: Install Python Dependencies
-      run:  poetry install
-    - name: Run Pytest
+    - name: Install pipenv
       run: |
-        poetry run pytest
+        pip install pipenv
+    - name: Install Deps
+      run: |
+        pipenv sync --dev
+    - name: Run Tests
+      run: |
+        pipenv run pytest
