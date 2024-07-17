@@ -16,7 +16,7 @@ import netfilterqueue  # noqa: E402
 from scapy.layers.inet import IP  # noqa: E402
 from scapy.layers.tls.all import *  # noqa: E402, F403
 
-from amphivena import playbook_utils  # noqa: E402
+from amphivena import playbook  # noqa: E402
 
 if TYPE_CHECKING:
     from scapy.packet import Packet
@@ -57,7 +57,7 @@ class PacketProcessor:
 
         :param playbook_file_path: string representation of playbook file path.
         """
-        self._playbook_data = playbook_utils.load(playbook_file_path)
+        self._playbook_data = playbook.load(playbook_file_path)
         self._remaining_instructions = copy.deepcopy(self._playbook_data.instructions)
         self._playbook_is_ordered = self._playbook_data.is_ordered
         self._loop_when_complete = self._playbook_data.loop_when_complete
@@ -106,10 +106,10 @@ class PacketProcessor:
         log.info("Starting processing")
         try:
             for instruction in instr_list:
-                if instruction.operation is playbook_utils.Instruction.Operation.drop:
+                if instruction.operation is playbook.Instruction.Operation.drop:
                     self._drop(pkt)
                     return
-                elif instruction.operation is playbook_utils.Instruction.Operation.edit:  # noqa: RET505
+                elif instruction.operation is playbook.Instruction.Operation.edit:  # noqa: RET505
                     self._edit_packet(scapy_packet, instruction)
                 else:
                     log.exception(
@@ -172,7 +172,7 @@ class PacketProcessor:
 
     @staticmethod
     def _analyze_packet(
-        scapy_packet: Packet, instruction: playbook_utils.Instruction
+        scapy_packet: Packet, instruction: playbook.Instruction
     ) -> bool:
         """
         Evaluate scapy_packet against the current instruction's conditions to determine if the given step will execute.
@@ -218,7 +218,7 @@ class PacketProcessor:
 
     @staticmethod
     def _edit_packet(
-        scapy_packet: Packet, instruction: playbook_utils.Instruction
+        scapy_packet: Packet, instruction: playbook.Instruction
     ) -> None:
         """
         Apply changes to packet as defined by playbook instruction's actions.
@@ -230,7 +230,7 @@ class PacketProcessor:
             for a in actions:
                 layer = a.layer
                 if scapy_packet.haslayer(layer):
-                    if a.type is playbook_utils.Action.Type.modify:
+                    if a.type is playbook.Action.Type.modify:
                         try:
                             packet_field = getattr(
                                 scapy_packet.getlayer(layer),

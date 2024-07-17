@@ -11,7 +11,7 @@ from tkinter import simpledialog as sd
 from tkinter import ttk
 from typing import Callable
 
-from amphivena import playbook_utils
+from amphivena import playbook
 
 log = logging.getLogger(__name__)
 
@@ -163,7 +163,7 @@ class JsonEditor:
 
         try:
             self.load_json_from_file(self.filepath)
-        except playbook_utils.PlaybookValidationError:
+        except playbook.PlaybookValidationError:
             log.exception()
             self.parent.destroy()
 
@@ -400,12 +400,12 @@ class JsonEditor:
         for child in self.tree.get_children():
             self.remove_item(child)
 
-    def load_json_from_file(self, filepath: str) -> playbook_utils.PlaybookMetadata:
+    def load_json_from_file(self, filepath: str) -> playbook.Playbook:
         """
         :param filepath: An absolute filepath to the json file.
         :return: The <dict> object parsed from the json file.
         """
-        data = playbook_utils.load(filepath).model_dump()
+        data = playbook.load(filepath).model_dump()
         for key in data:
             self.add_node(key, data.get(key))
 

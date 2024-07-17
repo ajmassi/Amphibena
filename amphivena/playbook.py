@@ -39,7 +39,7 @@ class Instruction(BaseModel):
     actions: Optional[List[Action]] = None  # noqa: FA100
 
 
-class PlaybookMetadata(BaseModel):
+class Playbook(BaseModel):
     is_ordered: bool
     loop_when_complete: Optional[bool] = False  # noqa: FA100
     remove_spent_instructions: Optional[bool] = True  # noqa: FA100
@@ -54,7 +54,7 @@ class PlaybookValidationError(Exception):
         super().__init__(self.message)
 
 
-def load(playbook_file_path: str) -> PlaybookMetadata:
+def load(playbook_file_path: str) -> Playbook:
     """
     Load playbook file and validate against schema.
 
@@ -65,7 +65,7 @@ def load(playbook_file_path: str) -> PlaybookMetadata:
         with pathlib.Path(playbook_file_path).open() as f:
             playbook_obj = json.load(f)
 
-        playbook_obj = PlaybookMetadata.model_validate(playbook_obj)
+        playbook_obj = Playbook.model_validate(playbook_obj)
     except JSONDecodeError as e:
         msg = f"Playbook json invalid: {e}"
         raise PlaybookValidationError(msg) from e

@@ -5,7 +5,7 @@ from asyncio.exceptions import CancelledError
 
 from amphivena import mitm, packet_processor
 from amphivena.mitm import MitmError, MitmInterfaceError
-from amphivena.playbook_utils import PlaybookValidationError
+from amphivena.playbook import PlaybookValidationError
 
 log = logging.getLogger(__name__)
 

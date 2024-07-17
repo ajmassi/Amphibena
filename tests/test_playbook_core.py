@@ -4,7 +4,7 @@ from unittest import mock
 
 import pytest
 
-from amphivena.playbook_utils import PlaybookValidationError
+from amphivena.playbook import PlaybookValidationError
 
 
 def test_file_not_found(new_packet_processor):
